@@ -73,12 +73,24 @@ constexpr float CAR_OFFSET_Y = 70.0f;
 //車のポジションZオフセット
 constexpr float CAR_OFFSET_Z = 160.0;
 
+//集中線を出し始めるスピード
+constexpr float SPEED_OVER_START_LINE = 80.0f;
+
+//ブレンド率
+constexpr int BLEND_PARAMETER = 50;
+
+//ブレンド時間
+constexpr float BLEND_TIME = 0.5f;
+
+//ギアを変えるタイミング指示用時間
+constexpr float GEAR_CHANGE_TIMING = 5.0f;
+
 #pragma endregion
 
 GameScene::GameScene(void)
 {
 
-	delta_ = 0.0f;
+	stepTime_ = 0.0f;
 
 	stepStartTime_ = START_TIME;
 
@@ -180,7 +192,10 @@ void GameScene::InitImageHandle(void)
 
 void GameScene::Update(void)
 {
+
 	stepStartTime_ -= SceneManager::GetInstance().GetDeltaTime();
+
+	stepTime_ += SceneManager::GetInstance().GetDeltaTime();
 
 	//カウントダウン中は動けなくする
 	if (stepStartTime_ > 0)
@@ -272,150 +287,17 @@ void GameScene::Draw(void)
 
 		SetFontSize(256);
 
-		if (stepStartTime_ >= 1.0f)
-		{
-			DrawFormatString((Application::SCREEN_SIZE_X / 2)/2, Application::SCREEN_SIZE_Y / 2 - 100, 0xffffff, "%d", static_cast<int>(stepStartTime_));
-		}
-		if (stepStartTime_ <= 1.0f && stepStartTime_ >= 0.0f)
-		{
-			DrawRotaGraph((Application::SCREEN_SIZE_X / 2)/2, Application::SCREEN_SIZE_Y / 2, 0.6f, 0.0f, imageInfos_[IMAGE_TYPE::START_SIGN], true);
-		}
-
-		SetFontSize(64);
-
 		auto carNowSpeed = cars_[i]->GetSpeed();
 		auto carNowGear = cars_[i]->GetGearNum();
 
-		//今のギア速の表示
-		DrawFormatString(Application::SCREEN_SIZE_X / 2 - 100, Application::SCREEN_SIZE_Y - 300, 0xffffff, "%d速",carNowGear);
+		DrawUi(carNowSpeed, carNowGear, i);
 
-		//スピード表示
-		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, 0x000000, "%dkm", static_cast<int>(carNowSpeed * 2));
+		DrawNeedle(carNowSpeed, carNowGear, i);
 
-		//タコメーター表示
-		DrawRotaGraph(Application::SCREEN_SIZE_X / 2 - 150.0f, Application::SCREEN_SIZE_Y - 100.0f, UI_SIZE, 0.0f, imageInfos_[IMAGE_TYPE::TACHOMETER], true);
-
-		//ミニマップ表示
-		DrawRotaGraph(MINIMAP_UI_POS_X, MINIMAP_UI_POS_Y, 1.0f, AsoUtility::Deg2RadF(-30.0f), imageInfos_[IMAGE_TYPE::MINIMAP], true);
-
-		//ミニマップに表示する自機及び色設定
-		std::vector<unsigned int> colors;
-
-		//色
-		colors.emplace_back(0xffffff);
-		colors.emplace_back(0xff0000);
-
-		auto size = cars_.size();
-		for (int j = 0 ; j < size ; j++)
+		//スピードが一定以上なら集中線を出す
+		if (SPEED_OVER_START_LINE < carNowSpeed)
 		{
-			//位置
-			Vector2 pos;
-			pos.x = cars_[j]->GetPos().x / MINIMAP_MATCH_SIZE;
-			pos.y = cars_[j]->GetPos().z / MINIMAP_MATCH_SIZE;
-
-			//自機位置表示のための円
-			unsigned int color = 0xff0000;
-			if (i == j)
-			{
-				color = 0xffffff;
-			}
-			DrawCircle(MINIMAP_UI_POS_X + pos.x, MINIMAP_UI_POS_Y + (-pos.y), CIRCLE_RADIUS, color, true);
-		}
-
-		delta_ += SceneManager::GetInstance().GetDeltaTime();
-
-		auto num = 0.0f;
-
-		//ギア及びその時の処理
-		if(carNowSpeed <= 30.0f&&carNowGear == 1)
-		{
-			num = carNowSpeed * MAX_LIMIT_RANGE / 30.0f;
-			DrawRectRotaGraph2(UI_POS_X,UI_POS_Y,0, 0, UI_WIDTH, UI_HEIGHT,ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num),imageInfos_[IMAGE_TYPE::NEEDLE], true);
-		}
-		if (carNowSpeed > 30.0f &&carNowGear == 1)
-		{
-			DrawRectRotaGraph2(UI_POS_X,UI_POS_Y,0, 0, UI_WIDTH, UI_HEIGHT,ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE),imageInfos_[IMAGE_TYPE::NEEDLE], true);
-		}
-		if (carNowSpeed <= 50.0f &&carNowGear == 2)
-		{
-			num = carNowSpeed * MAX_LIMIT_RANGE / 50.0f;
-			DrawRectRotaGraph2(UI_POS_X,UI_POS_Y,0, 0, UI_WIDTH, UI_HEIGHT,ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num),imageInfos_[IMAGE_TYPE::NEEDLE], true);
-		}
-		if (carNowSpeed > 50.0f &&carNowGear == 2)
-		{
-			DrawRectRotaGraph2(UI_POS_X,UI_POS_Y,0, 0, UI_WIDTH, UI_HEIGHT,ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE),imageInfos_[IMAGE_TYPE::NEEDLE], true);
-		}
-		if (carNowSpeed <= 70.0f &&carNowGear == 3)
-		{
-			num = carNowSpeed * MAX_LIMIT_RANGE / 70.0f;
-			DrawRectRotaGraph2(UI_POS_X,UI_POS_Y,0, 0, UI_WIDTH, UI_HEIGHT,ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num),imageInfos_[IMAGE_TYPE::NEEDLE], true);
-		}
-		if (carNowSpeed > 70.0f &&carNowGear == 3)
-		{
-			DrawRectRotaGraph2(UI_POS_X,UI_POS_Y,0, 0, UI_WIDTH, UI_HEIGHT,ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE),imageInfos_[IMAGE_TYPE::NEEDLE], true);
-		}
-		if (carNowSpeed <= 85.0f &&carNowGear == 4)
-		{
-			num = carNowSpeed * MAX_LIMIT_RANGE / 85.0f;
-			DrawRectRotaGraph2(UI_POS_X,UI_POS_Y,0, 0, UI_WIDTH, UI_HEIGHT,ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num),imageInfos_[IMAGE_TYPE::NEEDLE], true);
-		}
-		if (carNowSpeed > 85.0f &&carNowGear == 4)
-		{
-			DrawRectRotaGraph2(UI_POS_X,UI_POS_Y,0, 0, UI_WIDTH, UI_HEIGHT,ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE),imageInfos_[IMAGE_TYPE::NEEDLE], true);
-		}
-		if (carNowSpeed <= 100.0f &&carNowGear == 5)
-		{
-			num = carNowSpeed * MAX_LIMIT_RANGE / 100.0f;
-			DrawRectRotaGraph2(UI_POS_X,UI_POS_Y,0, 0, UI_WIDTH, UI_HEIGHT,ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num),imageInfos_[IMAGE_TYPE::NEEDLE], true);
-		}
-
-		if (carNowSpeed>80.0f)
-		{
-
-			//集中線
-			if (delta_ >= 0.0f && delta_ <= 0.49f)
-			{
-				SetDrawBlendMode(DX_BLENDMODE_ADD, 50);
-				DrawGraph(0, 0, imageInfos_[IMAGE_TYPE::LINE_1], true);
-				SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
-			}
-			if (delta_ >= 0.5f && delta_ <= 0.99f)
-			{
-				SetDrawBlendMode(DX_BLENDMODE_ADD, 50);
-				DrawGraph(0, 0, imageInfos_[IMAGE_TYPE::LINE_2], true);
-				SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
-			}
-			if (delta_ >= 1.0f && delta_ <= 1.49f)
-			{
-				SetDrawBlendMode(DX_BLENDMODE_ADD, 50);
-				DrawGraph(0, 0, imageInfos_[IMAGE_TYPE::LINE_3], true);
-				SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
-			}
-			if (delta_ >= 1.5f)
-			{
-				delta_ = 0.0f;
-			}
-
-		}
-
-		auto red = 0xff0000;
-
-		//ギア変えるタイミングをわかりやすくするために速度を赤色に
-		if (carNowGear == 1 && carNowSpeed >= 22.5f && carNowSpeed <= 30.0f)
-		{
-			DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(carNowSpeed * 2));
-		}
-		if (carNowGear == 2 && carNowSpeed >= 42.5f && carNowSpeed <= 50.0f)
-		{
-			DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(carNowSpeed * 2));
-		}
-		if (carNowGear == 3 && carNowSpeed >= 62.5f && carNowSpeed <= 70.0f)
-		{
-			DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(carNowSpeed * 2));
-		}
-		if (carNowGear == 4 && carNowSpeed >= 80.0f && carNowSpeed <= 85.0f)
-		{
-			DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(carNowSpeed * 2));
+			DrawLine();
 		}
 
 	}
@@ -444,6 +326,153 @@ void GameScene::DrawGame(void)
 
 	stage_->Draw();
 
+}
+
+void GameScene::DrawUi(float nowSpeed, int nowGear, int nowCarNum)
+{
+
+	if (stepStartTime_ >= 1.0f)
+	{
+		DrawFormatString((Application::SCREEN_SIZE_X / 2) / 2, Application::SCREEN_SIZE_Y / 2 - 100, 0xffffff, "%d", static_cast<int>(stepStartTime_));
+	}
+	if (stepStartTime_ <= 1.0f && stepStartTime_ >= 0.0f)
+	{
+		DrawRotaGraph((Application::SCREEN_SIZE_X / 2) / 2, Application::SCREEN_SIZE_Y / 2, 0.6f, 0.0f, imageInfos_[IMAGE_TYPE::START_SIGN], true);
+	}
+
+	SetFontSize(64);
+
+	//今のギア速の表示
+	DrawFormatString(Application::SCREEN_SIZE_X / 2 - 100, Application::SCREEN_SIZE_Y - 300, 0xffffff, "%d速", nowGear);
+
+	//スピード表示
+	DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, 0x000000, "%dkm", static_cast<int>(nowSpeed * 2));
+
+	//タコメーター表示
+	DrawRotaGraph(Application::SCREEN_SIZE_X / 2 - 150.0f, Application::SCREEN_SIZE_Y - 100.0f, UI_SIZE, 0.0f, imageInfos_[IMAGE_TYPE::TACHOMETER], true);
+
+	//ミニマップ表示
+	DrawRotaGraph(MINIMAP_UI_POS_X, MINIMAP_UI_POS_Y, 1.0f, AsoUtility::Deg2RadF(-30.0f), imageInfos_[IMAGE_TYPE::MINIMAP], true);
+
+	//ミニマップに表示する自機及び色設定
+	std::vector<unsigned int> colors;
+
+	//色
+	colors.emplace_back(0xffffff);
+	colors.emplace_back(0xff0000);
+
+	auto size = cars_.size();
+	for (int carNum = 0; carNum < size; carNum++)
+	{
+		//位置
+		Vector2 pos;
+		pos.x = cars_[carNum]->GetPos().x / MINIMAP_MATCH_SIZE;
+		pos.y = cars_[carNum]->GetPos().z / MINIMAP_MATCH_SIZE;
+
+		//自機位置表示のための円
+		unsigned int color = 0xff0000;
+		if (nowCarNum == carNum)
+		{
+			color = 0xffffff;
+		}
+		DrawCircle(MINIMAP_UI_POS_X + pos.x, MINIMAP_UI_POS_Y + (-pos.y), CIRCLE_RADIUS, color, true);
+	}
+}
+
+void GameScene::DrawNeedle(float nowSpeed, int nowGear, int nowCarNum)
+{
+	auto num = 0.0f;
+
+	//ギア及びその時の処理
+	if (nowSpeed <= cars_[nowCarNum]->GetMaxSpeedACC(0) && nowGear == 1)
+	{
+		num = nowSpeed * MAX_LIMIT_RANGE / cars_[nowCarNum]->GetMaxSpeedACC(0);
+		DrawRectRotaGraph2(UI_POS_X, UI_POS_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed > cars_[nowCarNum]->GetMaxSpeedACC(0) && nowGear == 1)
+	{
+		DrawRectRotaGraph2(UI_POS_X, UI_POS_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed <= cars_[nowCarNum]->GetMaxSpeedACC(1) && nowGear == 2)
+	{
+		num = nowSpeed * MAX_LIMIT_RANGE / cars_[nowCarNum]->GetMaxSpeedACC(1);
+		DrawRectRotaGraph2(UI_POS_X, UI_POS_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed > cars_[nowCarNum]->GetMaxSpeedACC(1) && nowGear == 2)
+	{
+		DrawRectRotaGraph2(UI_POS_X, UI_POS_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed <= cars_[nowCarNum]->GetMaxSpeedACC(2) && nowGear == 3)
+	{
+		num = nowSpeed * MAX_LIMIT_RANGE / cars_[nowCarNum]->GetMaxSpeedACC(2);
+		DrawRectRotaGraph2(UI_POS_X, UI_POS_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed > cars_[nowCarNum]->GetMaxSpeedACC(2) && nowGear == 3)
+	{
+		DrawRectRotaGraph2(UI_POS_X, UI_POS_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed <= cars_[nowCarNum]->GetMaxSpeedACC(3) && nowGear == 4)
+	{
+		num = nowSpeed * MAX_LIMIT_RANGE / cars_[nowCarNum]->GetMaxSpeedACC(3);
+		DrawRectRotaGraph2(UI_POS_X, UI_POS_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed > cars_[nowCarNum]->GetMaxSpeedACC(3) && nowGear == 4)
+	{
+		DrawRectRotaGraph2(UI_POS_X, UI_POS_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed <= cars_[nowCarNum]->GetMaxSpeedACC(4) && nowGear == 5)
+	{
+		num = nowSpeed * MAX_LIMIT_RANGE / cars_[nowCarNum]->GetMaxSpeedACC(4);
+		DrawRectRotaGraph2(UI_POS_X, UI_POS_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+
+	auto red = 0xff0000;
+
+	//ギア変えるタイミングをわかりやすくするために速度を赤色に
+	if (nowGear == 1 && nowSpeed >= cars_[nowCarNum]->GetMaxSpeedACC(0) - GEAR_CHANGE_TIMING && nowSpeed <= cars_[nowCarNum]->GetMaxSpeedACC(0))
+	{
+		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(nowSpeed * 2));
+	}
+	if (nowGear == 2 && nowSpeed >= cars_[nowCarNum]->GetMaxSpeedACC(1) - GEAR_CHANGE_TIMING && nowSpeed <= cars_[nowCarNum]->GetMaxSpeedACC(1))
+	{
+		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(nowSpeed * 2));
+	}
+	if (nowGear == 3 && nowSpeed >= cars_[nowCarNum]->GetMaxSpeedACC(2) - GEAR_CHANGE_TIMING && nowSpeed <= cars_[nowCarNum]->GetMaxSpeedACC(2))
+	{
+		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(nowSpeed * 2));
+	}
+	if (nowGear == 4 && nowSpeed >= cars_[nowCarNum]->GetMaxSpeedACC(3) - GEAR_CHANGE_TIMING && nowSpeed <= cars_[nowCarNum]->GetMaxSpeedACC(3))
+	{
+		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(nowSpeed * 2));
+	}
+}
+
+void GameScene::DrawLine(void)
+{	
+	
+	//集中線
+	if (stepTime_ >= 0.0f && stepTime_ < BLEND_TIME)
+	{
+		SetDrawBlendMode(DX_BLENDMODE_ADD, BLEND_PARAMETER);
+		DrawGraph(0, 0, imageInfos_[IMAGE_TYPE::LINE_1], true);
+		SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
+	}
+	if (stepTime_ >= BLEND_TIME && stepTime_ < BLEND_TIME * 2)
+	{
+		SetDrawBlendMode(DX_BLENDMODE_ADD, BLEND_PARAMETER);
+		DrawGraph(0, 0, imageInfos_[IMAGE_TYPE::LINE_2], true);
+		SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
+	}
+	if (stepTime_ >= BLEND_TIME * 2 && stepTime_ <= BLEND_TIME * 3)
+	{
+		SetDrawBlendMode(DX_BLENDMODE_ADD, BLEND_PARAMETER);
+		DrawGraph(0, 0, imageInfos_[IMAGE_TYPE::LINE_3], true);
+		SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
+	}
+	if (stepTime_ >= BLEND_TIME * 3)
+	{
+		stepTime_ = 0.0f;
+	}
 }
 
 void GameScene::ControllerVibration(void)

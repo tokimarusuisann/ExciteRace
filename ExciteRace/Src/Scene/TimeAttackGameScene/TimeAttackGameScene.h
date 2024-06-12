@@ -29,16 +29,24 @@ public:
 	//描画
 	void Draw(void) override;
 	
+
+
+	////UI AT描画
+	//void DrawUiAT(void);
+
+	////UI MT描画
+	//void DrawUiMT(void);
+
+private:
+
 	//UI描画
 	void DrawUi(void);
 
-	//UI AT描画
-	void DrawUiAT(void);
+	//ニードル描画（処理が多いので関数を別で作る）
+	void DrawUiNeedle(float nowSpeed);
 
-	//UI MT描画
-	void DrawUiMT(void);
-
-private:
+	//集中線描画
+	void DrawLine(void);
 
 	//インスタンス
 	std::unique_ptr<Car> car_;

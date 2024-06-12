@@ -78,6 +78,10 @@ void TimeAttackStartScene::Update(void)
 		SceneManager::GetInstance().ChangeScene(SceneManager::SCENE_ID::TIMEATTACKGAME, true);
 	}
 
+	//スカイドームを追従させる
+	skyDome_->SetFollowTarget(&car_->GetTransform());
+	skyDome_->Update();
+
 	stage_->Update();
 
 }
@@ -89,10 +93,9 @@ void TimeAttackStartScene::Draw(void)
 	// 画面を初期化
 	ClearDrawScreen();
 
+	//描画
 	camera_->SetBeforeDraw();
 
-	skyDome_->SetFollowTarget(&car_->GetTransform());
-	skyDome_->Update();
 	skyDome_->Draw();
 
 	car_->Draw();

@@ -64,6 +64,19 @@ constexpr int SPEED_FORMAT_POS_X = 100;
 
 //スピード表示座標Y
 constexpr int SPEED_FORMAT_POS_Y = 600;
+
+//ブレンド率
+constexpr int BLEND_PARAMETER = 50;
+
+//ブレンド時間
+constexpr float BLEND_TIME = 0.5f;
+
+//ギアを変えるタイミング指示用時間
+constexpr float GEAR_CHANGE_TIMING = 5.0f;
+
+//集中線を出し始めるスピード
+constexpr float SPEED_OVER_START_LINE = 80.0f;
+
 #pragma endregion
 
 TimeAttackGameScene::TimeAttackGameScene(void)
@@ -89,9 +102,10 @@ TimeAttackGameScene::~TimeAttackGameScene(void)
 
 void TimeAttackGameScene::Init(void)
 {
-
+	//画像初期化
 	InitImageHandle();
 
+	//初期化
 	skyDome_ = std::make_unique<SkyDome>();
 	skyDome_->Init();
 
@@ -109,6 +123,7 @@ void TimeAttackGameScene::Init(void)
 	//車の初期ポジション
 	VECTOR carPos = CAR_INIT_POS_;
 
+	//選んだ車によって能力が違うので継承で分けている
 	switch (carType)
 	{
 	case CAR_TYPE::BALANCE_CAR:
@@ -128,6 +143,7 @@ void TimeAttackGameScene::Init(void)
 	camera_->Init();
 	camera_->SetFollowTarget(&car_->GetTransform());
 
+	//当たり判定をとるモデル
 	car_->AddCol(stage_->GetModelIdRoadCollision());
 	car_->AddCol(stage_->GetModelIdGuardRailCollision());
 	car_->AddCol(stage_->GetModelIdWallCollision());
@@ -151,33 +167,39 @@ void TimeAttackGameScene::InitImageHandle(void)
 void TimeAttackGameScene::Update(void)
 {
 
-	if (stepStartTime_ <= 0)
+	stepStartTime_ -= SceneManager::GetInstance().GetDeltaTime();
+
+	//カウントダウン中は動けなくする
+	if (stepStartTime_ > 0)
+	{
+		return;
+	}
+
+	car_->Update();
+
+	//ゴールしたら
+	if (car_->IsHitGoal())
 	{
 
-		car_->Update();
+		SceneManager::GetInstance().ChangeScene(SceneManager::SCENE_ID::SCORE, true);
+		SceneManager::GetInstance().SetScore(scoreTime_);
 
-		if (car_->IsHitGoal())
-		{
-
-			SceneManager::GetInstance().ChangeScene(SceneManager::SCENE_ID::SCORE, true);
-			SceneManager::GetInstance().SetScore(scoreTime_);
-			//再生ストップ
-			SoundManager& soundIns = SoundManager::GetInstance();
-			soundIns.StopSound(Application::PATH_SOUND + "maou_bgm_neorock71b.mp3");
-
-		}
-		else
-		{
-			scoreTime_ += SceneManager::GetInstance().GetDeltaTime();
-		}
-
-		camera_->Update();
-
-		garage_->Update();
-
-		stage_->Update();
+		//再生ストップ
+		SoundManager& soundIns = SoundManager::GetInstance();
+		soundIns.StopSound(Application::PATH_SOUND + "maou_bgm_neorock71b.mp3");
 
 	}
+	else
+	{
+		scoreTime_ += SceneManager::GetInstance().GetDeltaTime();
+	}
+
+	camera_->Update();
+
+	garage_->Update();
+
+	stage_->Update();
+
 
 	auto& ins = InputManager::GetInstance();
 	if (ins.IsTrgDown(KEY_INPUT_SPACE))
@@ -195,6 +217,7 @@ void TimeAttackGameScene::Draw(void)
 	// 画面を初期化
 	ClearDrawScreen();
 
+	//描画
 	camera_->SetBeforeDraw();
 
 	skyDome_->SetFollowTarget(&car_->GetTransform());
@@ -207,19 +230,16 @@ void TimeAttackGameScene::Draw(void)
 
 	stage_->Draw();
 
+	auto carNowSpeed = car_->GetSpeed();
+
 	DrawUi();
 
-	switch (SceneManager::GetInstance().GetCarType())
+	DrawUiNeedle(carNowSpeed);
+
+	//スピードが一定以上なら集中線を出す
+	if (SPEED_OVER_START_LINE < carNowSpeed)
 	{
-	case CAR_TYPE::BALANCE_CAR:
-		DrawUiAT();
-		break;
-	case CAR_TYPE::ACCELERATE_CAR:
-		DrawUiAT();
-		break;
-	case CAR_TYPE::SPEED_CAR:
-		DrawUiMT();
-		break;
+		DrawLine();
 	}
 
 }
@@ -229,7 +249,6 @@ void TimeAttackGameScene::DrawUi(void)
 
 	SetFontSize(256);
 
-	stepStartTime_ -= SceneManager::GetInstance().GetDeltaTime();
 	if (stepStartTime_ >= 1.0f)
 	{
 		DrawFormatString(Application::SCREEN_SIZE_X / 2 - TIME_UI_OFFSET_X, Application::SCREEN_SIZE_Y / 2 - TIME_UI_OFFSET_Y, 0xffffff, "%d", static_cast<int>(stepStartTime_));
@@ -267,176 +286,101 @@ void TimeAttackGameScene::DrawUi(void)
 
 }
 
-void TimeAttackGameScene::DrawUiAT(void)
+void TimeAttackGameScene::DrawUiNeedle(float nowSpeed)
 {
-
-	int x = METER_NEEDLE_UI_X;
-	int y = METER_NEEDLE_UI_Y;
-
-	auto carNowSpeed = car_->GetSpeed();
 	auto carNowGear = car_->GetGearNum();
+
+	auto num = 0.0f;
+
+	//ギア及びその時の処理
+	if (nowSpeed <= car_->GetMaxSpeedACC(0) && carNowGear == 1)
+	{
+		num = nowSpeed * MAX_LIMIT_RANGE / car_->GetMaxSpeedACC(0);
+		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed > car_->GetMaxSpeedACC(0) && carNowGear == 1)
+	{
+		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed <= car_->GetMaxSpeedACC(1) && carNowGear == 2)
+	{
+		num = nowSpeed * MAX_LIMIT_RANGE / car_->GetMaxSpeedACC(1);
+		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed > car_->GetMaxSpeedACC(1) && carNowGear == 2)
+	{
+		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed <= car_->GetMaxSpeedACC(2) && carNowGear == 3)
+	{
+		num = nowSpeed * MAX_LIMIT_RANGE / car_->GetMaxSpeedACC(2);
+		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed > car_->GetMaxSpeedACC(2) && carNowGear == 3)
+	{
+		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed <= car_->GetMaxSpeedACC(3) && carNowGear == 4)
+	{
+		num = nowSpeed * MAX_LIMIT_RANGE / car_->GetMaxSpeedACC(3);
+		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed > car_->GetMaxSpeedACC(3) && carNowGear == 4)
+	{
+		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
+	if (nowSpeed <= car_->GetMaxSpeedACC(4) && carNowGear == 5)
+	{
+		num = nowSpeed * MAX_LIMIT_RANGE / car_->GetMaxSpeedACC(4);
+		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+	}
 
 	auto red = 0xff0000;
 
-	//ギア及びその時の処理
-	if (carNowSpeed <= 30.0f && carNowGear == 1)
+	//ギア変えるタイミングをわかりやすくするために速度を赤色に
+	if (carNowGear == 1 && nowSpeed >= car_->GetMaxSpeedACC(0) - GEAR_CHANGE_TIMING && nowSpeed <= car_->GetMaxSpeedACC(0))
 	{
-		float num = carNowSpeed * MAX_LIMIT_RANGE / 30.0f;
-		DrawRectRotaGraph2(x, y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(nowSpeed * 2));
 	}
-	if (carNowSpeed > 30.0f && carNowGear == 1)
+	if (carNowGear == 2 && nowSpeed >= car_->GetMaxSpeedACC(1) - GEAR_CHANGE_TIMING && nowSpeed <= car_->GetMaxSpeedACC(1))
 	{
-		DrawRectRotaGraph2(x, y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(nowSpeed * 2));
 	}
-	if (carNowSpeed <= 50.0f && carNowGear == 2)
+	if (carNowGear == 3 && nowSpeed >= car_->GetMaxSpeedACC(2) - GEAR_CHANGE_TIMING && nowSpeed <= car_->GetMaxSpeedACC(2))
 	{
-		float num = carNowSpeed * MAX_LIMIT_RANGE / 50.0f;
-		DrawRectRotaGraph2(x, y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(nowSpeed * 2));
 	}
-	if (carNowSpeed > 50.0f && carNowGear == 2)
+	if (carNowGear == 4 && nowSpeed >= car_->GetMaxSpeedACC(3) - GEAR_CHANGE_TIMING && nowSpeed <= car_->GetMaxSpeedACC(3))
 	{
-		DrawRectRotaGraph2(x, y,0, 0, UI_WIDTH, UI_HEIGHT,ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (carNowSpeed <= 70.0f && carNowGear == 3)
-	{
-		float num = carNowSpeed * MAX_LIMIT_RANGE / 70.0f;
-		DrawRectRotaGraph2(x, y,0, 0, UI_WIDTH, UI_HEIGHT,ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (carNowSpeed > 70.0f && carNowGear == 3)
-	{
-		DrawRectRotaGraph2(x, y,0, 0, UI_WIDTH, UI_HEIGHT,ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (carNowSpeed <= 85.0f && carNowGear == 4)
-	{
-		float num = carNowSpeed * MAX_LIMIT_RANGE / 85.0f;
-		DrawRectRotaGraph2(x, y,0, 0, UI_WIDTH, UI_HEIGHT,ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (carNowSpeed > 85.0f && carNowGear == 4)
-	{
-		DrawRectRotaGraph2(x, y,0, 0, UI_WIDTH, UI_HEIGHT,ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (carNowSpeed <= 100.0f && carNowGear == 5)
-	{
-		float num = carNowSpeed * MAX_LIMIT_RANGE / 100.0f;
-		DrawRectRotaGraph2(x, y,0, 0, UI_WIDTH, UI_HEIGHT,ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-
-	if (carNowGear == 1 && carNowSpeed >= 27.5f && carNowSpeed <= 30.0f)
-	{
-		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(carNowSpeed * 2));
-	}
-	if (carNowGear == 2 && carNowSpeed >= 47.5f && carNowSpeed <= 50.0f)
-	{
-		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(carNowSpeed * 2));
-	}
-	if (carNowGear == 3 && carNowSpeed >= 67.5f && carNowSpeed <= 70.0f)
-	{
-		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(carNowSpeed * 2));
-	}
-	if (carNowGear == 4 && carNowSpeed >= 82.5f && carNowSpeed <= 85.0f)
-	{
-		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(carNowSpeed * 2));
+		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(nowSpeed * 2));
 	}
 
 }
 
-void TimeAttackGameScene::DrawUiMT(void)
+void TimeAttackGameScene::DrawLine(void)
 {
-
-	auto carNowSpeed = car_->GetSpeed();
-	auto carNowGear = car_->GetGearNum();
-
-	int x = METER_NEEDLE_UI_X;
-	int y = METER_NEEDLE_UI_Y;
-
-	auto red = 0xff0000;
-
-	//ギア及びその時の処理
-	if (carNowSpeed <= 35.0f && carNowGear == 1)
+	//集中線
+	if (delta_ >= 0.0f && delta_ < BLEND_TIME)
 	{
-		float num = carNowSpeed * MAX_LIMIT_RANGE / 35.0f;
-		DrawRectRotaGraph2(x, y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+		SetDrawBlendMode(DX_BLENDMODE_ADD, BLEND_PARAMETER);
+		DrawGraph(0, 0, imageInfos_[IMAGE_TYPE::LINE_4], true);
+		SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
 	}
-	if (carNowSpeed > 35.0f && carNowGear == 1)
+	if (delta_ >= BLEND_TIME && delta_ < BLEND_TIME * 2)
 	{
-		DrawRectRotaGraph2(x, y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+		SetDrawBlendMode(DX_BLENDMODE_ADD, BLEND_PARAMETER);
+		DrawGraph(0, 0, imageInfos_[IMAGE_TYPE::LINE_5], true);
+		SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
 	}
-	if (carNowSpeed <= 60.0f && carNowGear == 2)
+	if (delta_ >= BLEND_TIME * 2 && delta_ <= BLEND_TIME * 3)
 	{
-		float num = carNowSpeed * MAX_LIMIT_RANGE / 60.0f;
-		DrawRectRotaGraph2(x, y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+		SetDrawBlendMode(DX_BLENDMODE_ADD, BLEND_PARAMETER);
+		DrawGraph(0, 0, imageInfos_[IMAGE_TYPE::LINE_6], true);
+		SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
 	}
-	if (carNowSpeed > 60.0f && carNowGear == 2)
+	if (delta_ >= BLEND_TIME * 3)
 	{
-		DrawRectRotaGraph2(x, y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+		delta_ = 0.0f;
 	}
-	if (carNowSpeed <= 80.0f && carNowGear == 3)
-	{
-		float num = carNowSpeed * MAX_LIMIT_RANGE / 80.0f;
-		DrawRectRotaGraph2(x, y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (carNowSpeed > 80.0f && carNowGear == 3)
-	{
-		DrawRectRotaGraph2(x, y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (carNowSpeed <= 100.0f && carNowGear == 4)
-	{
-		float num = carNowSpeed * MAX_LIMIT_RANGE / 100.0f;
-		DrawRectRotaGraph2(x, y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (carNowSpeed > 100.0f && carNowGear == 4)
-	{
-		DrawRectRotaGraph2(x, y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (carNowSpeed <= 110.0f && carNowGear == 5)
-	{
-		float num = carNowSpeed * MAX_LIMIT_RANGE / 110.0f;
-		DrawRectRotaGraph2(x, y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-
-	if (carNowGear == 1 && carNowSpeed >= 32.5 && carNowSpeed <= 35.0f)
-	{
-		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(carNowSpeed * 2));
-	}
-	if (carNowGear == 2 && carNowSpeed >= 57.5f && carNowSpeed <= 60.0f)
-	{
-		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(carNowSpeed * 2));
-	}
-	if (carNowGear == 3 && carNowSpeed >= 77.5f && carNowSpeed <= 80.0f)
-	{
-		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(carNowSpeed * 2));
-	}
-	if (carNowGear == 4 && carNowSpeed >= 97.5f && carNowSpeed <= 100.0f)
-	{
-		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(carNowSpeed * 2));
-	}
-
-	delta_ += SceneManager::GetInstance().GetDeltaTime();
-	if (carNowSpeed > 80.0f)
-	{
-		if (delta_ >= 0.0f && delta_ <= 0.49f)
-		{
-			SetDrawBlendMode(DX_BLENDMODE_ADD, 50);
-			DrawGraph(0, 0, imageInfos_[IMAGE_TYPE::LINE_4], true);
-			SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
-		}
-		if (delta_ >= 0.5f && delta_ <= 0.99f)
-		{
-			SetDrawBlendMode(DX_BLENDMODE_ADD, 50);
-			DrawGraph(0, 0, imageInfos_[IMAGE_TYPE::LINE_5], true);
-			SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
-		}
-		if (delta_ >= 1.0f && delta_ <= 1.49f)
-		{
-			SetDrawBlendMode(DX_BLENDMODE_ADD, 50);
-			DrawGraph(0, 0, imageInfos_[IMAGE_TYPE::LINE_6], true);
-			SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
-		}
-		if (delta_ >= 1.5f)
-		{
-			delta_ = 0.0f;
-		}
-	}
-
 }
 
