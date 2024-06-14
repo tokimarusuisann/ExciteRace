@@ -57,9 +57,10 @@ void TitleScene::Update(void)
 	auto& inputMngIns = InputManager::GetInstance();
 	auto& soundMngIns = SoundManager::GetInstance();
 
-	if (inputMngIns.IsPadBtnTrgDown(InputManager::JOYPAD_NO::PAD1, InputManager::JOYPAD_BTN::R_TRIGGER) ||inputMngIns.IsPadBtnTrgDown(InputManager::JOYPAD_NO::PAD2, InputManager::JOYPAD_BTN::R_TRIGGER))
+	if (inputMngIns.IsPadBtnTrgDown(InputManager::JOYPAD_NO::PAD1, InputManager::JOYPAD_BTN::R_TRIGGER) ||
+		inputMngIns.IsPadBtnTrgDown(InputManager::JOYPAD_NO::PAD2, InputManager::JOYPAD_BTN::R_TRIGGER))
 	{
-		//SEçƒê∂
+		//ÉTÉEÉìÉhÇÃçƒê∂
 		soundMngIns.PlaySound(Application::PATH_SOUND + "maou_se_sound_car05.mp3", false);
 		soundMngIns.SetVolume(MUSIC_DEFAULT_VOLUME);
 
