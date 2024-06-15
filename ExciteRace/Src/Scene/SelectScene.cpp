@@ -22,6 +22,12 @@ constexpr float BUTTON_SELECTED_SIZE = 1.2f;
 //ボタンのオフセット座標Y
 constexpr int BUTTON_OFFSET_POS_Y = 100;
 
+//ボタンの幅
+constexpr int BUTTON_WIDTH = 300;
+
+//ボタンの高さ
+constexpr int BUTTON_HEIGHT = 84;
+
 //ボタンの初期座標Y
 constexpr int BUTTON_INIT_POS_Y = 500;
 
@@ -30,6 +36,15 @@ constexpr int CURSOR_INIT_POS_X = Application::SCREEN_SIZE_X / 2 - 220;
 
 //カーソルの初期座標Y
 constexpr int CURSOR_INIT_POS_Y = 600;
+
+//カーソルの幅
+static constexpr int CURSOR_WIDTH = 100;
+
+//カーソルの幅
+static constexpr int CURSOR_HEIGHT = 50;
+
+//カーソルのデフォルトサイズ
+constexpr float CURSOR_DEFAULT_SIZE = 1.0f;
 
 #pragma endregion
 
@@ -112,23 +127,14 @@ void SelectScene::ProcessPushButton(void)
 	if (isTrgUp)
 	{
 		soundSelectFlag = true;
-
-		cursorInfo_.second.y -= 100;
-		if (cursorInfo_.second.y <= 500)
-		{
-			cursorInfo_.second.y = 500;
-		}
+		cursorInfo_.second.y = std::max(cursorInfo_.second.y - BUTTON_OFFSET_POS_Y, BUTTON_INIT_POS_Y);
 	}
 
 	//下を選択
 	if (isTrgDown)
 	{
 		soundSelectFlag = true;
-		cursorInfo_.second.y += 100;
-		if (cursorInfo_.second.y >= 700)
-		{
-			cursorInfo_.second.y = 700;
-		}
+		cursorInfo_.second.y = std::min(cursorInfo_.second.y + BUTTON_OFFSET_POS_Y, BUTTON_INIT_POS_Y + (BUTTON_OFFSET_POS_Y * 2));
 	}
 
 	if (soundSelectFlag)
@@ -139,7 +145,7 @@ void SelectScene::ProcessPushButton(void)
 
 	if (IsRightTrg)
 	{
-		for (size_t i = 0;i < sceneIds_.size(); i++)
+		for (size_t i = 0; i < sceneIds_.size(); i++)
 		{
 			if (cursorInfo_.second.y == btnInfos_[i].second.y)
 			{
@@ -181,11 +187,11 @@ void SelectScene::DrawButtons(void)
 	for (size_t i = 0; i < backGraund_.size(); i++)
 	{
 		float size = (cursorInfo_.second.y == btnInfos_[i].second.y) ? BUTTON_SELECTED_SIZE : BUTTON_DEFAULT_SIZE;
-		DrawRectRotaGraph(btnInfos_[i].second.x, btnInfos_[i].second.y, 1.0f, 1.0f, 300, 84, size, 0.0f, btnInfos_[i].first, true);
+		DrawRectRotaGraph(btnInfos_[i].second.x, btnInfos_[i].second.y, 1.0f, 1.0f, BUTTON_WIDTH, BUTTON_HEIGHT, size, 0.0f, btnInfos_[i].first, true);
 	}
 }
 
 void SelectScene::DrawCursor(void)
 {
-	DrawRectRotaGraph(cursorInfo_.second.x, cursorInfo_.second.y, 1.0f, 1.0f, 100, 50, 1.0f, 0.0f, cursorInfo_.first, true);
+	DrawRectRotaGraph(cursorInfo_.second.x, cursorInfo_.second.y, 1.0f, 1.0f, CURSOR_WIDTH, CURSOR_HEIGHT, CURSOR_DEFAULT_SIZE, 0.0f, cursorInfo_.first, true);
 }
