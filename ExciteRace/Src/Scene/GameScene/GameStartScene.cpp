@@ -68,7 +68,7 @@ void GameStartScene::Init(void)
 	}
 
 	SoundManager& soundIns = SoundManager::GetInstance();
-	soundIns.PlaySoundA(Application::PATH_SOUND + "maou_bgm_neorock71b.mp3", true);
+	soundIns.MyPlaySound(Application::PATH_SOUND + "maou_bgm_neorock71b.mp3", true);
 	soundIns.SetVolume(MUSIC_DEFAULT_VOLUME);
 
 }

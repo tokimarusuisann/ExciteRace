@@ -161,7 +161,7 @@ void SelectScene::PlayControlSound(const std::string& filename)
 {
 	auto& soundIns = SoundManager::GetInstance();
 
-	soundIns.PlaySoundA(Application::PATH_SOUND + filename, false);
+	soundIns.MyPlaySound(Application::PATH_SOUND + filename, false);
 	soundIns.SetVolume(MUSIC_DEFAULT_VOLUME);
 }
 

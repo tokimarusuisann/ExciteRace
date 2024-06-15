@@ -321,7 +321,7 @@ void Car::ChangeGear(void)
 	//SE再生
 	if (gearChangeFlag)
 	{
-		SoundManager::GetInstance().PlaySoundA(Application::PATH_SOUND + "車のギアチェンジ.mp3", false);
+		SoundManager::GetInstance().MyPlaySound(Application::PATH_SOUND + "車のギアチェンジ.mp3", false);
 	}
 }
 

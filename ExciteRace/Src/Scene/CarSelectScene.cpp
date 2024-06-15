@@ -102,7 +102,7 @@ void CarSelectScene::Init(void)
 	camera_->SetFollowSelectTarget(transformCar_);
 
 	SoundManager& soundIns = SoundManager::GetInstance();
-	soundIns.PlaySoundA(Application::PATH_SOUND + "maou_bgm_neorock78.mp3", true);
+	soundIns.MyPlaySound(Application::PATH_SOUND + "maou_bgm_neorock78.mp3", true);
 	soundIns.SetVolume(MUSIC_DEFAULT_VOLUME);
 
 }
@@ -193,7 +193,7 @@ void CarSelectScene::ProcessButtonPush(void)
 
 	if (isTrgRight || isTrgLeft)
 	{
-		soundIns.PlaySoundA(Application::PATH_SOUND + "button04a.mp3", false);
+		soundIns.MyPlaySound(Application::PATH_SOUND + "button04a.mp3", false);
 
 		soundIns.SetVolume(MUSIC_DEFAULT_VOLUME);
 	}
@@ -203,7 +203,7 @@ void CarSelectScene::ProcessButtonPush(void)
 		sceneIns.SetCarType(static_cast<CAR_TYPE>(index_));
 		sceneIns.ChangeScene(SceneManager::SCENE_ID::TIMEATTACKGAMESTART, true);
 		//çƒê∂
-		soundIns.PlaySoundA(Application::PATH_SOUND + "maou_se_sound_car05.mp3", false);
+		soundIns.MyPlaySound(Application::PATH_SOUND + "maou_se_sound_car05.mp3", false);
 		//âπó 
 		soundIns.SetVolume(MUSIC_DEFAULT_VOLUME);
 		//í‚é~

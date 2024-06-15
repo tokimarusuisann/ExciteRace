@@ -44,7 +44,7 @@ void ScoreScene::Update(void)
 		SceneManager::GetInstance().ChangeScene(SceneManager::SCENE_ID::SELECT, true);
 
 		//Œˆ’èSE
-		soundIns.PlaySoundA(Application::PATH_SOUND + "maou_se_sound_car05.mp3", false);
+		soundIns.MyPlaySound(Application::PATH_SOUND + "maou_se_sound_car05.mp3", false);
 		soundIns.SetVolume(MUSIC_DEFAULT_VOLUME);
 	}
 

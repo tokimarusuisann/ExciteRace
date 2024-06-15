@@ -30,7 +30,7 @@ void SoundManager::ReleaseInstance()
 	//インスタンスは自動的に破棄される
 }
 
-void SoundManager::PlaySoundA(std::string filename, bool loop)
+void SoundManager::MyPlaySound(std::string filename, bool loop)
 {
 	//マップ内を検索する
 	auto soundPair = sounds_.find(filename);

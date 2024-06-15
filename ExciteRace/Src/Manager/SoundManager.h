@@ -14,7 +14,7 @@ public:
 	static void ReleaseInstance();
 
 	//サウンドを再生する
-	void PlaySoundA(std::string filename, bool loop = false);
+	void MyPlaySound(std::string filename, bool loop = false);
 
 	//サウンドを再生を止める
 	void StopSound(std::string filename);
