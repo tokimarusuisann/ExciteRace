@@ -493,31 +493,34 @@ double Quaternion::Angle(const Quaternion& q1, const Quaternion& q2)
 Quaternion Quaternion::SlerpUnclamped(Quaternion a, Quaternion b, float t)
 {
 
-    // if either input is zero, return the other.
     if (a.LengthSquared() == 0.0f)
     {
         if (b.LengthSquared() == 0.0f)
         {
+            //—¼•û‚Æ‚àƒ[ƒŽlŒ³”‚È‚ç’PˆÊŽlŒ³”‚ð•Ô‚·
             return Identity();
         }
+        //a‚ªƒ[ƒŽlŒ³”‚È‚çb‚ð•Ô‚·
         return b;
     }
     else if (b.LengthSquared() == 0.0f)
-    {
+    { 
+        //b‚ªƒ[ƒŽlŒ³”‚È‚ça‚ð•Ô‚·
         return a;
     }
 
-
+    //a‚Æb‚Ì“àÏ‚ð‹‚ß‘«‚µ‡‚í‚¹‚é
     float cosHalfAngle = (float)(a.w * b.w) + VDot(a.xyz(), b.xyz());
 
+    //“àÏ‚ª1‚Ü‚½‚Í-1‚È‚ç•âŠÔ•s—v
     if (cosHalfAngle >= 1.0f || cosHalfAngle <= -1.0f)
     {
-        // angle = 0.0f, so just return one input.
+        //Šp“x‚ª0‚È‚Ì‚ÅAa‚ð‚»‚Ì‚Ü‚Ü•Ô‚·
         return a;
     }
     else if (cosHalfAngle < 0.0f)
     {
-        //b.xyz() = -b.xyz();
+        // b‚ª”½‘Î•ûŒü‚ðŒü‚¢‚Ä‚¢‚éê‡‚ÍAb‚ð”½“]‚³‚¹‚é
 		b.x = b.x * -1.0f;
 		b.y = b.y * -1.0f;
 		b.z = b.z * -1.0f;

@@ -11,10 +11,31 @@
 #include "../Object/Garage.h"
 #include "SelectScene.h"
 
+#pragma region 定数宣言
+
+//ボタンのデフォルトサイズ
+constexpr float BUTTON_DEFAULT_SIZE = 1.0f;
+
+//ボタンの拡大後サイズ
+constexpr float BUTTON_SELECTED_SIZE = 1.2f;
+
+//ボタンのオフセット座標Y
+constexpr int BUTTON_OFFSET_POS_Y = 100;
+
+//ボタンの初期座標Y
+constexpr int BUTTON_INIT_POS_Y = 500;
+
+//カーソルの初期座標X
+constexpr int CURSOR_INIT_POS_X = Application::SCREEN_SIZE_X / 2 - 220;
+
+//カーソルの初期座標Y
+constexpr int CURSOR_INIT_POS_Y = 600;
+
+#pragma endregion
+
 
 SelectScene::SelectScene(void)
 {
-	cursorHandle_ = -1;
 }
 
 SelectScene::~SelectScene(void)
@@ -23,6 +44,7 @@ SelectScene::~SelectScene(void)
 
 void SelectScene::Init(void)
 {
+
 	//Instance省略
 	auto& resIns = ResourceManager::GetInstance();
 
@@ -32,14 +54,9 @@ void SelectScene::Init(void)
 	backGraund_.emplace_back(resIns.Load(ResourceManager::SRC::RANKING_BACKGROUND).handleId_);
 
 	//ボタンのハンドルと位置情報
-	btnInfos_.emplace_back(std::make_pair(resIns.Load(ResourceManager::SRC::VERSUS_BUTTON).handleId_, Vector2{ Application::SCREEN_SIZE_X / 2, 500 }));
-	btnInfos_.emplace_back(std::make_pair(resIns.Load(ResourceManager::SRC::TIMEATTACK_BUTTON).handleId_, Vector2{ Application::SCREEN_SIZE_X / 2, 600 }));
-	btnInfos_.emplace_back(std::make_pair(resIns.Load(ResourceManager::SRC::RANKING_BUTTON).handleId_, Vector2{ Application::SCREEN_SIZE_X / 2, 700 }));
-
-	//モード選択の場合
-	modes_.emplace_back(MODE::TIMEATTACK);
-	modes_.emplace_back(MODE::VERSUS);
-	modes_.emplace_back(MODE::OPTION);
+	btnInfos_.emplace_back(std::make_pair(resIns.Load(ResourceManager::SRC::VERSUS_BUTTON).handleId_, Vector2{ Application::SCREEN_SIZE_X / 2, BUTTON_INIT_POS_Y }));
+	btnInfos_.emplace_back(std::make_pair(resIns.Load(ResourceManager::SRC::TIMEATTACK_BUTTON).handleId_, Vector2{ Application::SCREEN_SIZE_X / 2, BUTTON_INIT_POS_Y + BUTTON_OFFSET_POS_Y}));
+	btnInfos_.emplace_back(std::make_pair(resIns.Load(ResourceManager::SRC::RANKING_BUTTON).handleId_, Vector2{ Application::SCREEN_SIZE_X / 2, BUTTON_INIT_POS_Y + (BUTTON_OFFSET_POS_Y * 2) }));
 
 	//シーン移行時に必要なMODE情報
 	sceneIds_.emplace_back(SceneManager::SCENE_ID::VS_GAMESTART);
@@ -47,22 +64,40 @@ void SelectScene::Init(void)
 	sceneIds_.emplace_back(SceneManager::SCENE_ID::SCORE);
 
 	//選んでるのがわかりやすいように示すカーソルの情報
-	cursorHandle_ = ResourceManager::GetInstance().Load(ResourceManager::SRC::CURSOR).handleId_;
-	cursorPos_ = { Application::SCREEN_SIZE_X / 2-220, 600 };
+	cursorInfo_ = std::make_pair(ResourceManager::GetInstance().Load(ResourceManager::SRC::CURSOR).handleId_, Vector2{ CURSOR_INIT_POS_X,CURSOR_INIT_POS_Y });
 
 	//BGM再生
-	auto& soundMngIns = SoundManager::GetInstance();
-	soundMngIns.PlaySound(Application::PATH_SOUND + "maou_bgm_neorock53.mp3", true);
-	soundMngIns.SetVolume(MUSIC_DEFAULT_VOLUME);
+	PlayControlSound("maou_bgm_neorock53.mp3");
+
 }
 
 void SelectScene::Update(void)
 {
 
-	//Instance省略
+	//ボタン押したときの処理
+	ProcessPushButton();
+
+}
+
+void SelectScene::Draw(void)
+{
+
+	//背景描画
+	DrawBackGround();
+
+	//ボタン描画
+	DrawButtons();
+
+	//カーソル描画
+	DrawCursor();
+
+}
+
+void SelectScene::ProcessPushButton(void)
+{
 	auto& inputIns = InputManager::GetInstance();
-	auto& sceneIns = SceneManager::GetInstance();
 	auto& soundIns = SoundManager::GetInstance();
+	auto& sceneIns = SceneManager::GetInstance();
 
 	//コントローラー
 	auto cState = inputIns.GetJPadInputState(InputManager::JOYPAD_NO::PAD1);
@@ -70,20 +105,18 @@ void SelectScene::Update(void)
 	bool isTrgDown = inputIns.IsPadBtnTrgDown(InputManager::JOYPAD_NO::PAD1, InputManager::JOYPAD_BTN::BOTTOM);
 	bool IsRightTrg = inputIns.IsPadBtnTrgDown(InputManager::JOYPAD_NO::PAD1, InputManager::JOYPAD_BTN::R_TRIGGER);
 
-	//選択中のサウンドフラグ
+	//選択サウンドフラグ
 	bool soundSelectFlag = false;
-
-	//決定時のサウンドフラグ
-	bool soundDesideFlag = false;
 
 	//上を選択
 	if (isTrgUp)
 	{
 		soundSelectFlag = true;
-		cursorPos_.y -= 100;
-		if (cursorPos_.y <= 500)
+
+		cursorInfo_.second.y -= 100;
+		if (cursorInfo_.second.y <= 500)
 		{
-			cursorPos_.y = 500;
+			cursorInfo_.second.y = 500;
 		}
 	}
 
@@ -91,69 +124,68 @@ void SelectScene::Update(void)
 	if (isTrgDown)
 	{
 		soundSelectFlag = true;
-		cursorPos_.y += 100;
-		if (cursorPos_.y >= 700)
+		cursorInfo_.second.y += 100;
+		if (cursorInfo_.second.y >= 700)
 		{
-			cursorPos_.y = 700;
+			cursorInfo_.second.y = 700;
 		}
 	}
 
-	//サウンド再生
 	if (soundSelectFlag)
 	{
-		soundIns.PlaySound(Application::PATH_SOUND + "button04a.mp3", false);
-		soundIns.SetVolume(MUSIC_DEFAULT_VOLUME);
+		//サウンド再生
+		PlayControlSound("button04a.mp3");
 	}
 
-	//シーン移行
-	for (int i = 0; i < sceneIds_.size(); i++)
+	if (IsRightTrg)
 	{
-		if (IsRightTrg && cursorPos_.y == btnInfos_[i].second.y)
+		for (size_t i = 0;i < sceneIds_.size(); i++)
 		{
-			soundDesideFlag = true;
-			sceneIns.ChangeScene(sceneIds_[i], true);
-		}
-	}
+			if (cursorInfo_.second.y == btnInfos_[i].second.y)
+			{
+				//再生
+				PlayControlSound("maou_se_sound_car05.mp3");
 
-	//サウンド再生・停止
-	if (soundDesideFlag)
-	{
-		//SE再生
-		soundIns.PlaySound(Application::PATH_SOUND + "maou_se_sound_car05.mp3", false);
-		soundIns.SetVolume(MUSIC_DEFAULT_VOLUME);
-		//BGM再生を止める
-		soundIns.StopSound(Application::PATH_SOUND + "maou_bgm_neorock53.mp3");
+				//BGM再生を止める
+				soundIns.StopSound(Application::PATH_SOUND + "maou_bgm_neorock53.mp3");
+
+				//シーン遷移
+				sceneIns.ChangeScene(sceneIds_[i], true);
+			}
+		}
 	}
 
 }
 
-void SelectScene::Draw(void)
-{	
+void SelectScene::PlayControlSound(const std::string& filename)
+{
+	auto& soundIns = SoundManager::GetInstance();
 
-	//ボタンのサイズ
-	std::vector<float> btnSize;
-	btnSize.emplace_back(1.0f);
-	btnSize.emplace_back(1.0f);
-	btnSize.emplace_back(1.0f);
+	soundIns.PlaySoundA(Application::PATH_SOUND + filename, false);
+	soundIns.SetVolume(MUSIC_DEFAULT_VOLUME);
+}
 
-	//バックグラウンド
-	for (int i = 0; i < backGraund_.size(); i++)
+void SelectScene::DrawBackGround(void)
+{
+	for (size_t i = 0; i < backGraund_.size(); i++)
 	{
-		if (cursorPos_.y == btnInfos_[i].second.y)
+		if (cursorInfo_.second.y == btnInfos_[i].second.y)
 		{
 			DrawGraph(0, 0, backGraund_[i], false);
-			//選んでいるのがどこかわかりやすいようにボタンサイズを拡大
-			btnSize[i] = 1.2f;
 		}
 	}
+}
 
-	//ボタンの描画
-	for (int i = 0; i < btnInfos_.size(); i++)
+void SelectScene::DrawButtons(void)
+{
+	for (size_t i = 0; i < backGraund_.size(); i++)
 	{
-		DrawRectRotaGraph(btnInfos_[i].second.x, btnInfos_[i].second.y, 1.0f, 1.0f, 300, 84, btnSize[i], 0.0f, btnInfos_[i].first, true);
+		float size = (cursorInfo_.second.y == btnInfos_[i].second.y) ? BUTTON_SELECTED_SIZE : BUTTON_DEFAULT_SIZE;
+		DrawRectRotaGraph(btnInfos_[i].second.x, btnInfos_[i].second.y, 1.0f, 1.0f, 300, 84, size, 0.0f, btnInfos_[i].first, true);
 	}
+}
 
-	//選んでるのがわかりやすいように車のカーソルを出す
-	DrawRectRotaGraph(cursorPos_.x, cursorPos_.y, 1.0f, 1.0f, 100, 50, 1.0f, 0.0f, cursorHandle_, true);
-
+void SelectScene::DrawCursor(void)
+{
+	DrawRectRotaGraph(cursorInfo_.second.x, cursorInfo_.second.y, 1.0f, 1.0f, 100, 50, 1.0f, 0.0f, cursorInfo_.first, true);
 }

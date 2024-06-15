@@ -61,7 +61,7 @@ void TitleScene::Update(void)
 		inputMngIns.IsPadBtnTrgDown(InputManager::JOYPAD_NO::PAD2, InputManager::JOYPAD_BTN::R_TRIGGER))
 	{
 		//サウンドの再生
-		soundMngIns.PlaySound(Application::PATH_SOUND + "maou_se_sound_car05.mp3", false);
+		soundMngIns.PlaySoundA(Application::PATH_SOUND + "maou_se_sound_car05.mp3", false);
 		soundMngIns.SetVolume(MUSIC_DEFAULT_VOLUME);
 
 		//シーン遷移

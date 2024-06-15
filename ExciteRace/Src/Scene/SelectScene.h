@@ -36,26 +36,32 @@ public:
 
 private:
 
+	//ボタンが押された際の処理
+	void ProcessPushButton(void);
+
+	//音楽再生
+	void PlayControlSound(const std::string& filename);
+
+	//背景描画
+	void DrawBackGround(void);
+
+	//ボタン描画
+	void DrawButtons(void);
+
+	//カーソル描画
+	void DrawCursor(void);
+
+
+	std::pair<int, Vector2> cursorInfo_;
+
 	//背景のハンドル格納
 	std::vector<int> backGraund_;
 
 	//ボタンのハンドルと位置情報
 	std::vector<std::pair<int,Vector2>> btnInfos_;
 
-	//選ばれてるモード情報
-	std::vector<MODE> modes_;
-
 	//シーン移行モード格納
 	std::vector<SceneManager::SCENE_ID> sceneIds_;
-
-	//ボタンポジション
-	std::vector<Vector2> btnPos_;
-
-	//カーソルポジション
-	Vector2 cursorPos_;
-
-	//カーソルハンドル
-	int cursorHandle_;
 
 };
 
