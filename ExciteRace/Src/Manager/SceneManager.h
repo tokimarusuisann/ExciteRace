@@ -14,6 +14,12 @@ public:
 	//プレイヤー人数
 	static constexpr int PLAYER_NUM = 2;
 
+	//重力の力
+	static constexpr float GRAVITY_POW = 9.8f;
+
+	//重力の方向
+	static constexpr VECTOR GRAVITY_DIR = { 0.0f,-1.0f,0.0f };
+
 	// シーン管理用
 	enum class SCENE_ID
 	{
@@ -97,9 +103,6 @@ private:
 	// デルタタイム
 	std::chrono::system_clock::time_point preTime_;
 	float deltaTime_;
-
-	VECTOR dirDown;
-	float gravityPow;
 
 	std::vector<float> scores_;
 

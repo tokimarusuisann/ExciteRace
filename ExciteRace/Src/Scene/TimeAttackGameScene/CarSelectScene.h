@@ -1,8 +1,8 @@
 #pragma once
 #include<array>
-#include "../Object/Common/Transform.h"
-#include "../Common/CollectStructure.h"
-#include "SceneBase.h"
+#include "../../Object/Common/Transform.h"
+#include "../../Common/CollectStructure.h"
+#include "../SceneBase.h"
 
 class Transform;
 class Camera;

@@ -1,31 +1,29 @@
 #pragma once
-#include "SceneBase.h"
+#include "../SceneBase.h"
 
-class Vector2;
-
-class ScoreScene : public SceneBase
+class ResultScene : public SceneBase
 {
 public:
 
 	// コンストラクタ
-	ScoreScene(void);
+	ResultScene(void);
 
 	// デストラクタ
-	~ScoreScene(void);
+	~ResultScene(void);
 
 	//初期化
 	void Init(void) override;
-	
+
 	//更新
 	void Update(void) override;
-	
+
 	//描画
 	void Draw(void) override;
 
 private:
 
-	//スコア画面のロゴ
-	int scoreLogo_;
+	//リザルトロゴ
+	int resultLogo_;
 
 };
 

@@ -4,13 +4,13 @@
 #include "../Common/Fader.h"
 #include "../Scene/TitleScene.h"
 #include "../Scene/SelectScene.h"
-#include "../Scene/CarSelectScene.h"
+#include "../Scene//TimeAttackGameScene/CarSelectScene.h"
 #include "../Scene/GameScene/GameScene.h"
 #include "../Scene/GameScene/GameStartScene.h"
 #include "../Scene/TimeAttackGameScene/TimeAttackStartScene.h"
 #include "../Scene/TimeAttackGameScene/TimeAttackGameScene.h"
-#include "../Scene/ScoreScene.h"
-#include "../Scene/ResultScene.h"
+#include "../Scene/ResultScene/ScoreScene.h"
+#include "../Scene/ResultScene/ResultScene.h"
 #include "../Application.h"
 #include "Camera.h"
 #include "ResourceManager.h"
@@ -48,12 +48,6 @@ void SceneManager::Init(void)
 
 	// デルタタイム
 	preTime_ = std::chrono::system_clock::now();
-
-	//下方向　重力
-	dirDown = { 0.0f,-1.0f,0.0f };
-
-	//重力の力
-	gravityPow = 9.8f;
 
 	mainScreen_ = MakeScreen(Application::SCREEN_SIZE_X, Application::SCREEN_SIZE_Y, true);
 
@@ -203,12 +197,12 @@ float SceneManager::GetDeltaTime(void) const
 
 VECTOR SceneManager::GetGravityDir(void) const
 {
-	return dirDown;
+	return GRAVITY_DIR;
 }
 
 float SceneManager::GetGravityPow(void) const
 {
-	return gravityPow;
+	return GRAVITY_POW;
 }
 
 void SceneManager::SetScore(float score)

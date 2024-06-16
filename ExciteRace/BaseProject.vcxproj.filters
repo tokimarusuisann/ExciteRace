@@ -141,16 +141,16 @@
     <ClCompile Include="Src\Scene\GameScene\GameStartScene.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="Src\Scene\CarSelectScene.cpp">
+    <ClCompile Include="Src\Scene\TimeAttackGameScene\CarSelectScene.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="Src\Scene\TimeAttackGameScene\TimeAttackStartScene.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="Src\Scene\ScoreScene.cpp">
+    <ClCompile Include="Src\Scene\ResultScene\ScoreScene.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="Src\Scene\ResultScene.cpp">
+    <ClCompile Include="Src\Scene\ResultScene\ResultScene.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="Src\Manager\SoundManager.cpp">
@@ -248,19 +248,19 @@
     <ClInclude Include="Src\Scene\GameScene\GameStartScene.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="Src\Scene\CarSelectScene.h">
+    <ClInclude Include="Src\Scene\TimeAttackGameScene\CarSelectScene.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="Src\Scene\TimeAttackGameScene\TimeAttackStartScene.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="Src\Scene\ScoreScene.h">
+    <ClInclude Include="Src\Scene\ResultScene\ScoreScene.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="Src\Common\CollectStructure.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="Src\Scene\ResultScene.h">
+    <ClInclude Include="Src\Scene\ResultScene\ResultScene.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="Src\Manager\SoundManager.h">
