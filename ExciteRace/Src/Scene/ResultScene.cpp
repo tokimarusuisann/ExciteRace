@@ -7,9 +7,10 @@
 #include "ResultScene.h"
 
 #pragma region 定数宣言
-//このクラスでしか使わない
+
 //スタートタイムの初期値
 constexpr int FORMAT_POS_X = 200;
+
 #pragma endregion
 
 ResultScene::ResultScene(void)

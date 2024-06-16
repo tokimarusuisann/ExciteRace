@@ -7,7 +7,7 @@
 #include "ScoreScene.h"
 
 #pragma region 定数宣言
-//このクラスでしか使わない
+
 //スコアのオフセットY
 constexpr int SCORE_OFFSET_Y = 50;
 

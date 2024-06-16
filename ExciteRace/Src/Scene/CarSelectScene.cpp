@@ -13,7 +13,6 @@
 #include "CarSelectScene.h"
 
 #pragma region 定数宣言
-//このクラスでしか使わない
 
 //初期パラメーター
 
@@ -122,6 +121,40 @@ void CarSelectScene::Update(void)
 	camera_->Update();
 
 	garage_->Update();
+
+}
+
+void CarSelectScene::Draw(void)
+{
+
+	SetDrawScreen(DX_SCREEN_BACK);
+	//画面を初期化
+	ClearDrawScreen();
+
+	camera_->SetBeforeDraw();
+
+	garage_->Draw();
+
+	MV1DrawModel(transformCar_.modelId_);
+	MV1DrawModel(transformWheel_.modelId_);
+
+	DrawBox(0, 600, Application::SCREEN_SIZE_X, 780, 0xaaaaaa, true);
+	DrawBox(0, 600, Application::SCREEN_SIZE_X, 780, 0xffff00, false);
+
+	auto size = carLogoHandle_.size();
+	for (int i = 0 ; i < size ; i++)
+	{
+		DrawRotaGraph(300+(i*400),Application::SCREEN_SIZE_Y - 80,1.0f, 0.0f, carLogoHandle_[i], true);
+	}
+
+	DrawRotaGraph(Application::SCREEN_SIZE_X-70, Application::SCREEN_SIZE_Y-40, 0.7f, 0.0f,decisionHandle_, true);
+	DrawRotaGraph(70, Application::SCREEN_SIZE_Y-40, 0.3f, 0.0f, crossHandle_, true);
+
+
+	if (index_ >= MIN_INDEX && index_ < MAX_INDEX)
+	{
+		DrawRotaGraph(UI_POSITIONS_X[index_], Application::SCREEN_SIZE_Y - 80, 1.3f, 0.0f, carLogoHandle_[index_], true);
+	}
 
 }
 
@@ -249,12 +282,12 @@ void CarSelectScene::SetParam(void)
 	};
 
 	SetParamCar(index_, carParams[index_].carPos_, carParams[index_].carScale_, carParams[index_].carRot_);
-	
+
 	SetParamWheel(index_, carParams[index_].wheelPos_, carParams[index_].wheelScale_, carParams[index_].carRot_);
 
 }
 
-void CarSelectScene::SetParamCar(int idx , VECTOR pos, VECTOR scl, VECTOR rot)
+void CarSelectScene::SetParamCar(int idx, VECTOR pos, VECTOR scl, VECTOR rot)
 {
 
 	//モデルセット
@@ -291,39 +324,5 @@ void CarSelectScene::SetParamWheel(int idx, VECTOR pos, VECTOR scl, VECTOR rot)
 
 	//更新
 	transformWheel_.Update();
-
-}
-
-void CarSelectScene::Draw(void)
-{
-
-	SetDrawScreen(DX_SCREEN_BACK);
-	//画面を初期化
-	ClearDrawScreen();
-
-	camera_->SetBeforeDraw();
-
-	garage_->Draw();
-
-	MV1DrawModel(transformCar_.modelId_);
-	MV1DrawModel(transformWheel_.modelId_);
-
-	DrawBox(0, 600, Application::SCREEN_SIZE_X, 780, 0xaaaaaa, true);
-	DrawBox(0, 600, Application::SCREEN_SIZE_X, 780, 0xffff00, false);
-
-	auto size = carLogoHandle_.size();
-	for (int i = 0 ; i < size ; i++)
-	{
-		DrawRotaGraph(300+(i*400),Application::SCREEN_SIZE_Y - 80,1.0f, 0.0f, carLogoHandle_[i], true);
-	}
-
-	DrawRotaGraph(Application::SCREEN_SIZE_X-70, Application::SCREEN_SIZE_Y-40, 0.7f, 0.0f,decisionHandle_, true);
-	DrawRotaGraph(70, Application::SCREEN_SIZE_Y-40, 0.3f, 0.0f, crossHandle_, true);
-
-
-	if (index_ >= MIN_INDEX && index_ < MAX_INDEX)
-	{
-		DrawRotaGraph(UI_POSITIONS_X[index_], Application::SCREEN_SIZE_Y - 80, 1.3f, 0.0f, carLogoHandle_[index_], true);
-	}
 
 }

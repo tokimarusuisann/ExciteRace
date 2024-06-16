@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <unordered_map>
 #include "../SceneBase.h"
 
 class Stage;
@@ -30,8 +31,29 @@ public:
 	
 private:
 
+	//車の初期値
+	void InitCarParam(void);
+
+	//カメラの初期値
+	void InitCameraParam(void);
+
 	//画像ハンドル初期化
 	void InitImageHandle(void);
+
+	//ステージオブジェクト初期化
+	void InitStageObjects(void);
+
+	//車とカメラの初期化
+	void InitPlayerAndCamera(int index);
+
+	//当たり判定用モデルハンドルを追加
+	void SetupCollision(void);
+
+	//車同士の当たり判定
+	void ProcessCarCollision(std::unique_ptr<Car>& car1P, std::unique_ptr<Car>& car2P);
+
+	//ゴールとの当たり判定
+	void ProcessGoalCollision(std::unique_ptr<Car>& car);
 
 	//ゲーム内で使う描画
 	void DrawGame(void);
@@ -39,7 +61,7 @@ private:
 	//Ui描画
 	void DrawUi(float nowSpeed , int nowGear ,int nowCarNum);
 
-	//ニードル描画（処理が多いので関数を別で作る）
+	//ニードル描画(処理が多いので関数を別で作る)
 	void DrawNeedle(float nowSpeed, int nowGear , int nowCarNum);
 
 	//集中線描画
@@ -49,7 +71,7 @@ private:
 	void ControllerVibration(void);
 
 	//１Pと２Pの衝突時処理
-	VECTOR Collision1PTo2P(VECTOR pos1, VECTOR pos2);
+	VECTOR CalcCollisionCar(VECTOR pos1, VECTOR pos2);
 
 	//画像タイプ
 	enum class IMAGE_TYPE
@@ -77,7 +99,11 @@ private:
 	std::vector<Vector2> screenPos_;
 
 	//タイプごとのハンドル情報格納変数
-	std::map<IMAGE_TYPE, int> imageInfos_;
+	std::unordered_map<IMAGE_TYPE, int> imageInfos_;
+
+	std::vector<VECTOR> vecPos_;
+	std::vector<CAR_TYPE> carTypes_;
+	std::vector<InputManager::JOYPAD_NO> padNos_;
 
 	//時間計測用変数
 	float stepTime_;

@@ -10,7 +10,7 @@
 #include "TitleScene.h"
 
 #pragma region 定数宣言
-//このクラスでしか使わない
+
 //タイトルロゴサイズ
 constexpr float TITLE_LOGO_SIZE = 0.5f;
 
@@ -25,6 +25,7 @@ constexpr int FORMAT_POS_Y = 150;
 
 //指示フォーマットY座標
 constexpr int INSTRUCT_FORMAT_POS_Y = 50;
+
 #pragma endregion
 
 TitleScene::TitleScene(void)
