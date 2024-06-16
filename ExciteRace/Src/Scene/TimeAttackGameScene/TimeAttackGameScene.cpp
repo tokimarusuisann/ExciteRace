@@ -54,7 +54,7 @@ constexpr int METER_NEEDLE_UI_X = Application::SCREEN_SIZE_X - 300;
 constexpr int METER_NEEDLE_UI_Y = Application::SCREEN_SIZE_Y - 150;
 
 //スタートタイムの初期値
-constexpr float START_TIME = 4.0f;
+constexpr float START_TIME = 3.0f;
 
 //ミニマップにポジション合わせるための定数
 constexpr float MINIMAP_MATCH_SIZE = 400.0f;
@@ -92,7 +92,7 @@ TimeAttackGameScene::TimeAttackGameScene(void)
 
 TimeAttackGameScene::~TimeAttackGameScene(void)
 {
-
+	//メモリ開放
 	for (auto& imageInfo : imageInfos_)
 	{
 		DeleteGraph(imageInfos_[imageInfo.first]);
@@ -105,17 +105,107 @@ void TimeAttackGameScene::Init(void)
 	//画像初期化
 	InitImageHandle();
 
-	//初期化
-	skyDome_ = std::make_unique<SkyDome>();
-	skyDome_->Init();
+	//ステージオブジェクト初期化
+	InitStageObjects();
 
-	garage_ = std::make_unique<Garage>();
-	garage_->Init();
-	garage_->SetPos(GARAGE_INIT_POS);
-	garage_->Update();
+	//選択した車の初期化
+	InitSelectCar();
+	
+	//カメラの初期化
+	InitCamera();
 
-	stage_ = std::make_unique<Stage>();
-	stage_->Init();
+	//当たり判定用モデルハンドルを追加
+	SetupCollision();
+
+}
+
+void TimeAttackGameScene::Update(void)
+{
+	stepStartTime_ -= SceneManager::GetInstance().GetDeltaTime();
+
+	//カウントダウン中は動けなくする
+	if (stepStartTime_ > 0)
+	{
+		return;
+	}
+
+	//ゴールしたら
+	if (car_->IsHitGoal())
+	{
+		ProcessGoalCollision();
+	}
+	else
+	{
+		scoreTime_ += SceneManager::GetInstance().GetDeltaTime();
+	}
+
+	//オブジェクト更新
+	UpdateObject();
+
+}
+
+void TimeAttackGameScene::Draw(void)
+{
+
+	SetDrawScreen(DX_SCREEN_BACK);
+
+	// 画面を初期化
+	ClearDrawScreen();
+
+	//描画
+	camera_->SetBeforeDraw();
+
+	skyDome_->SetFollowTarget(&car_->GetTransform());
+	skyDome_->Update();
+
+	auto carNowSpeed = car_->GetSpeed();
+	auto carNowGear = car_->GetGearNum();
+
+	//オブジェクト描画
+	DrawGame();
+
+	//Ui描画
+	DrawUi(carNowSpeed, carNowGear);
+
+	//スコア描画
+	DrawScore();
+
+	//タコメーター描画
+	DrawTachometer();
+
+	//ミニマップ描画
+	DrawMiniMap();
+
+	//スピード描画
+	DrawSpeedAndGear(carNowSpeed, carNowGear);
+
+	//ニードル描画
+	DrawNeedle(carNowSpeed, carNowGear);
+
+	//スピードが一定以上なら集中線を出す
+	if (SPEED_OVER_START_LINE < carNowSpeed)
+	{
+		DrawLine();
+	}
+
+}
+
+void TimeAttackGameScene::InitImageHandle(void)
+{
+
+	auto& resIns = ResourceManager::GetInstance();
+	imageInfos_[IMAGE_TYPE::TACHOMETER] = resIns.Load(ResourceManager::SRC::TACHOMETER).handleId_;
+	imageInfos_[IMAGE_TYPE::NEEDLE] = resIns.Load(ResourceManager::SRC::NEEDLE).handleId_;
+	imageInfos_[IMAGE_TYPE::MINIMAP] = resIns.Load(ResourceManager::SRC::MINIMAP).handleId_;
+	imageInfos_[IMAGE_TYPE::LINE_4] = resIns.Load(ResourceManager::SRC::LINE_4).handleId_;
+	imageInfos_[IMAGE_TYPE::LINE_5] = resIns.Load(ResourceManager::SRC::LINE_5).handleId_;
+	imageInfos_[IMAGE_TYPE::LINE_6] = resIns.Load(ResourceManager::SRC::LINE_6).handleId_;
+	imageInfos_[IMAGE_TYPE::START_SIGN] = resIns.Load(ResourceManager::SRC::START_SIGN).handleId_;
+
+}
+
+void TimeAttackGameScene::InitSelectCar(void)
+{
 
 	//選んだ車のタイプ
 	CAR_TYPE carType = SceneManager::GetInstance().GetCarType();
@@ -137,11 +227,39 @@ void TimeAttackGameScene::Init(void)
 		break;
 	}
 
-	car_->Init(carType,carPos);
+	car_->Init(carType, carPos);
 
+}
+
+void TimeAttackGameScene::InitCamera(void)
+{
 	camera_ = std::make_unique<Camera>();
 	camera_->Init();
+
+	//カメラ追従ターゲット指定
 	camera_->SetFollowTarget(&car_->GetTransform());
+}
+
+void TimeAttackGameScene::InitStageObjects(void)
+{
+	//スカイドーム
+	skyDome_ = std::make_unique<SkyDome>();
+	skyDome_->Init();
+
+	//ガレージ ステージオブジェクト
+	garage_ = std::make_unique<Garage>();
+	garage_->Init();
+	garage_->SetPos(GARAGE_INIT_POS);
+	garage_->Update();
+
+	//ステージ
+	stage_ = std::make_unique<Stage>();
+	stage_->Init();
+
+}
+
+void TimeAttackGameScene::SetupCollision(void)
+{	
 
 	//当たり判定をとるモデル
 	car_->AddCol(stage_->GetModelIdRoadCollision());
@@ -150,78 +268,32 @@ void TimeAttackGameScene::Init(void)
 
 }
 
-void TimeAttackGameScene::InitImageHandle(void)
+void TimeAttackGameScene::UpdateObject(void)
 {
-
-	auto& resIns = ResourceManager::GetInstance();
-	imageInfos_[IMAGE_TYPE::TACHOMETER] = resIns.Load(ResourceManager::SRC::TACHOMETER).handleId_;
-	imageInfos_[IMAGE_TYPE::NEEDLE] = resIns.Load(ResourceManager::SRC::NEEDLE).handleId_;
-	imageInfos_[IMAGE_TYPE::MINIMAP] = resIns.Load(ResourceManager::SRC::MINIMAP).handleId_;
-	imageInfos_[IMAGE_TYPE::LINE_4] = resIns.Load(ResourceManager::SRC::LINE_4).handleId_;
-	imageInfos_[IMAGE_TYPE::LINE_5] = resIns.Load(ResourceManager::SRC::LINE_5).handleId_;
-	imageInfos_[IMAGE_TYPE::LINE_6] = resIns.Load(ResourceManager::SRC::LINE_6).handleId_;
-	imageInfos_[IMAGE_TYPE::START_SIGN] = resIns.Load(ResourceManager::SRC::START_SIGN).handleId_;
-
-}
-
-void TimeAttackGameScene::Update(void)
-{
-
-	stepStartTime_ -= SceneManager::GetInstance().GetDeltaTime();
-
-	//カウントダウン中は動けなくする
-	if (stepStartTime_ > 0)
-	{
-		return;
-	}
-
 	car_->Update();
-
-	//ゴールしたら
-	if (car_->IsHitGoal())
-	{
-
-		SceneManager::GetInstance().ChangeScene(SceneManager::SCENE_ID::SCORE, true);
-		SceneManager::GetInstance().SetScore(scoreTime_);
-
-		//再生ストップ
-		SoundManager& soundIns = SoundManager::GetInstance();
-		soundIns.StopSound(Application::PATH_SOUND + "maou_bgm_neorock71b.mp3");
-
-	}
-	else
-	{
-		scoreTime_ += SceneManager::GetInstance().GetDeltaTime();
-	}
 
 	camera_->Update();
 
 	garage_->Update();
 
 	stage_->Update();
+}
 
+void TimeAttackGameScene::ProcessGoalCollision(void)
+{
 
-	auto& ins = InputManager::GetInstance();
-	if (ins.IsTrgDown(KEY_INPUT_SPACE))
-	{
-		SceneManager::GetInstance().ChangeScene(SceneManager::SCENE_ID::TITLE, true);
-	}
+	SceneManager::GetInstance().ChangeScene(SceneManager::SCENE_ID::SCORE, true);
+	SceneManager::GetInstance().SetScore(scoreTime_);
+
+	//再生ストップ
+	SoundManager& soundIns = SoundManager::GetInstance();
+	soundIns.StopSound(Application::PATH_SOUND + "maou_bgm_neorock71b.mp3");
 
 }
 
-void TimeAttackGameScene::Draw(void)
+void TimeAttackGameScene::DrawGame(void)
 {
 
-	SetDrawScreen(DX_SCREEN_BACK);
-
-	// 画面を初期化
-	ClearDrawScreen();
-
-	//描画
-	camera_->SetBeforeDraw();
-
-	skyDome_->SetFollowTarget(&car_->GetTransform());
-	skyDome_->Update();
 	skyDome_->Draw();
 
 	garage_->Draw();
@@ -230,21 +302,9 @@ void TimeAttackGameScene::Draw(void)
 
 	stage_->Draw();
 
-	auto carNowSpeed = car_->GetSpeed();
-
-	DrawUi();
-
-	DrawUiNeedle(carNowSpeed);
-
-	//スピードが一定以上なら集中線を出す
-	if (SPEED_OVER_START_LINE < carNowSpeed)
-	{
-		DrawLine();
-	}
-
 }
 
-void TimeAttackGameScene::DrawUi(void)
+void TimeAttackGameScene::DrawUi(float nowSpeed, int nowGear)
 {
 
 	SetFontSize(256);
@@ -260,19 +320,48 @@ void TimeAttackGameScene::DrawUi(void)
 
 	SetFontSize(64);
 
-	DrawFormatString(Application::SCREEN_SIZE_X / 2 - SCORE_TIME_UI_OFFSET_X, 100, 0xffffff, "%.2f", scoreTime_);
+
+}
+
+void TimeAttackGameScene::DrawTachometer(void)
+{
+	//タコメーター表示
+	DrawRotaGraph(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, UI_SIZE, 0.0f, imageInfos_[IMAGE_TYPE::TACHOMETER], true);
+
+}
+
+void TimeAttackGameScene::DrawSpeedAndGear(float nowSpeed, int nowGear)
+{
 
 	//今のギア速の表示
 	DrawFormatString(Application::SCREEN_SIZE_X - GEAR_UI_OFFSET_X, Application::SCREEN_SIZE_Y - GEAR_UI_OFFSET_Y, 0xffffff, "%d速", car_->GetGearNum());
 
-	auto black = 0x000000;
+	auto maxSpeed = car_->GetMaxSpeedACC(nowGear - 1);
 
 	//スピード表示
-	DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, black, "%dkm", static_cast<int>(car_->GetSpeed() * 2));
+	DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, 0x000000, "%dkm", static_cast<int>(car_->GetSpeed() * 2));
 
-	//タコメーター表示
-	DrawRotaGraph(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, UI_SIZE, 0.0f, imageInfos_[IMAGE_TYPE::TACHOMETER], true);
+	//ギアを変えるタイミングを赤色表示で指示
+	if (nowSpeed >= maxSpeed - GEAR_CHANGE_TIMING && nowSpeed <= maxSpeed)
+	{
+		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, 0xff0000, "%dkm", static_cast<int>(nowSpeed * 2));
+	}
 
+}
+
+void TimeAttackGameScene::DrawNeedle(float nowSpeed, int nowGear)
+{
+
+	auto maxSpeed = car_->GetMaxSpeedACC(nowGear - 1);
+	auto angle = std::min(nowSpeed * MAX_LIMIT_RANGE / maxSpeed, MAX_LIMIT_RANGE);
+
+	//ニードル描画
+	DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(angle), imageInfos_[IMAGE_TYPE::NEEDLE], true);
+
+}
+
+void TimeAttackGameScene::DrawMiniMap(void)
+{
 	//ミニマップ表示
 	DrawRotaGraph(MINIMAP_UI_POS_X, MINIMAP_UI_POS_Y, 1.0f, AsoUtility::Deg2RadF(-30.0f), imageInfos_[IMAGE_TYPE::MINIMAP], true);
 
@@ -283,78 +372,11 @@ void TimeAttackGameScene::DrawUi(void)
 
 	//自機位置表示のための円
 	DrawCircle(MINIMAP_UI_POS_X + pos.x, MINIMAP_UI_POS_Y + (-pos.y), 5.0f, 0xffffff, true);
-
 }
 
-void TimeAttackGameScene::DrawUiNeedle(float nowSpeed)
+void TimeAttackGameScene::DrawScore(void)
 {
-	auto carNowGear = car_->GetGearNum();
-
-	auto num = 0.0f;
-
-	//ギア及びその時の処理
-	if (nowSpeed <= car_->GetMaxSpeedACC(0) && carNowGear == 1)
-	{
-		num = nowSpeed * MAX_LIMIT_RANGE / car_->GetMaxSpeedACC(0);
-		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (nowSpeed > car_->GetMaxSpeedACC(0) && carNowGear == 1)
-	{
-		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (nowSpeed <= car_->GetMaxSpeedACC(1) && carNowGear == 2)
-	{
-		num = nowSpeed * MAX_LIMIT_RANGE / car_->GetMaxSpeedACC(1);
-		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (nowSpeed > car_->GetMaxSpeedACC(1) && carNowGear == 2)
-	{
-		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (nowSpeed <= car_->GetMaxSpeedACC(2) && carNowGear == 3)
-	{
-		num = nowSpeed * MAX_LIMIT_RANGE / car_->GetMaxSpeedACC(2);
-		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (nowSpeed > car_->GetMaxSpeedACC(2) && carNowGear == 3)
-	{
-		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (nowSpeed <= car_->GetMaxSpeedACC(3) && carNowGear == 4)
-	{
-		num = nowSpeed * MAX_LIMIT_RANGE / car_->GetMaxSpeedACC(3);
-		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (nowSpeed > car_->GetMaxSpeedACC(3) && carNowGear == 4)
-	{
-		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(MAX_LIMIT_RANGE), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-	if (nowSpeed <= car_->GetMaxSpeedACC(4) && carNowGear == 5)
-	{
-		num = nowSpeed * MAX_LIMIT_RANGE / car_->GetMaxSpeedACC(4);
-		DrawRectRotaGraph2(METER_NEEDLE_UI_X, METER_NEEDLE_UI_Y, 0, 0, UI_WIDTH, UI_HEIGHT, ROT_CENTER_X, ROT_CENTER_Y, UI_SIZE, AsoUtility::Deg2RadF(num), imageInfos_[IMAGE_TYPE::NEEDLE], true);
-	}
-
-	auto red = 0xff0000;
-
-	//ギア変えるタイミングをわかりやすくするために速度を赤色に
-	if (carNowGear == 1 && nowSpeed >= car_->GetMaxSpeedACC(0) - GEAR_CHANGE_TIMING && nowSpeed <= car_->GetMaxSpeedACC(0))
-	{
-		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(nowSpeed * 2));
-	}
-	if (carNowGear == 2 && nowSpeed >= car_->GetMaxSpeedACC(1) - GEAR_CHANGE_TIMING && nowSpeed <= car_->GetMaxSpeedACC(1))
-	{
-		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(nowSpeed * 2));
-	}
-	if (carNowGear == 3 && nowSpeed >= car_->GetMaxSpeedACC(2) - GEAR_CHANGE_TIMING && nowSpeed <= car_->GetMaxSpeedACC(2))
-	{
-		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(nowSpeed * 2));
-	}
-	if (carNowGear == 4 && nowSpeed >= car_->GetMaxSpeedACC(3) - GEAR_CHANGE_TIMING && nowSpeed <= car_->GetMaxSpeedACC(3))
-	{
-		DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, red, "%dkm", static_cast<int>(nowSpeed * 2));
-	}
-
+	DrawFormatString(Application::SCREEN_SIZE_X / 2 - SCORE_TIME_UI_OFFSET_X, 100, 0xffffff, "%.2f", scoreTime_);
 }
 
 void TimeAttackGameScene::DrawLine(void)

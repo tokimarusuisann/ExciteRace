@@ -17,7 +17,7 @@
 #pragma region 定数宣言
 //このクラスでしか使わない
 //スタートタイムの初期値
-constexpr float START_TIME = 4.0f;
+constexpr float START_TIME = 3.0f;
 
 //メーター回転の制限範囲
 constexpr float MAX_LIMIT_RANGE = 250.0f;
@@ -109,6 +109,8 @@ GameScene::~GameScene(void)
 
 void GameScene::Init(void)
 {
+	//画像ハンドル初期化
+	InitImageHandle();
 
 	//車の初期値
 	InitCarParam();
@@ -119,14 +121,11 @@ void GameScene::Init(void)
 	//ステージオブジェクト初期化
 	InitStageObjects();
 
-	//画像ハンドル初期化
-	InitImageHandle();
-
 	int playerNum = SceneManager::GetInstance().GetPlayerNum();
-
 	for (int i = 0; i < playerNum; i++)
 	{
-		InitPlayerAndCamera(i);
+		//車とカメラの初期化
+		InitCarAndCamera(i);
 	}
 
 	//当たり判定用モデルハンドルを追加
@@ -137,11 +136,183 @@ void GameScene::Init(void)
 void GameScene::Update(void)
 {
 
+	//時間更新
+	ProcessStepTime();
+
+	//当たり判定と車の更新
+	ProcessCarUpdatesAndCollisions();
+
+	//オブジェクト更新
+	UpdateObject();
+}
+
+void GameScene::Draw(void)
+{
+
+	int playerNum = SceneManager::GetInstance().GetPlayerNum();
+
+	for (int i = 0; i < playerNum; i++)
+	{
+		SetDrawScreen(cameraScreens_[i]);
+
+		// 画面を初期化
+		ClearDrawScreen();
+		
+		cameras_[i]->SetBeforeDraw();
+
+		skyDome_->SetFollowTarget(&cars_[i]->GetTransform());
+		skyDome_->Update();
+
+		auto carNowSpeed = cars_[i]->GetSpeed();
+		auto carNowGear = cars_[i]->GetGearNum();
+
+		//オブジェクト描画
+		DrawGame();
+
+		//Ui描画
+		DrawUi(carNowSpeed, carNowGear, i);
+
+		//タコメーター描画
+		DrawTachometer();
+
+		//ミニマップ描画
+		DrawMiniMap(i);
+
+		//スピード描画
+		DrawSpeed(carNowSpeed, carNowGear, i);
+
+		//ニードル描画
+		DrawNeedle(carNowSpeed, carNowGear, i);
+
+		//スピードが一定以上なら集中線を出す
+		if (SPEED_OVER_START_LINE < carNowSpeed)
+		{
+			DrawLine();
+		}
+
+	}
+
+	SetDrawScreen(DX_SCREEN_BACK);
+
+	// 画面を初期化
+	ClearDrawScreen();
+
+	for (int i = 0; i < playerNum; i++)
+	{
+		DrawGraph(screenPos_[i].x, screenPos_[i].y, cameraScreens_[i], false);//透過処理は後で見直す
+	}
+
+}
+
+void GameScene::InitCarParam(void)
+{
+
+	//１Pと２Pのポジション
+	vecPos_ = { CAR_INIT_POS_1 ,CAR_INIT_POS_2 };
+
+	//１Pと２Pの車のタイプ
+	carTypes_ = { CAR_TYPE::BALANCE_CAR ,CAR_TYPE::BALANCE_CAR };
+
+	//１Pと２Pのパッド番号
+	padNos_ = { InputManager::JOYPAD_NO::PAD1, InputManager::JOYPAD_NO::PAD2 };
+
+}
+
+void GameScene::InitCameraParam(void)
+{
+
+	auto playerNum = SceneManager::GetInstance().GetPlayerNum();
+
+	int halfScreenWidth = Application::SCREEN_SIZE_X / 2;
+
+	for (int i = 0; i < playerNum; i++)
+	{
+		//スクリーンを２つ作成
+		cameraScreens_.emplace_back(MakeScreen(halfScreenWidth, Application::SCREEN_SIZE_Y, true));
+
+		//スクリーンのポジション
+		screenPos_.emplace_back(Vector2(halfScreenWidth * i, 0));
+	}
+
+}
+
+void GameScene::InitImageHandle(void)
+{
+
+	auto& resIns = ResourceManager::GetInstance();
+
+	imageInfos_[IMAGE_TYPE::TACHOMETER] = resIns.Load(ResourceManager::SRC::TACHOMETER).handleId_;
+	imageInfos_[IMAGE_TYPE::NEEDLE] = resIns.Load(ResourceManager::SRC::NEEDLE).handleId_;
+	imageInfos_[IMAGE_TYPE::MINIMAP] = resIns.Load(ResourceManager::SRC::MINIMAP).handleId_;
+	imageInfos_[IMAGE_TYPE::LINE_1] = resIns.Load(ResourceManager::SRC::LINE_1).handleId_;
+	imageInfos_[IMAGE_TYPE::LINE_2] = resIns.Load(ResourceManager::SRC::LINE_2).handleId_;
+	imageInfos_[IMAGE_TYPE::LINE_3] = resIns.Load(ResourceManager::SRC::LINE_3).handleId_;
+	imageInfos_[IMAGE_TYPE::START_SIGN] = resIns.Load(ResourceManager::SRC::START_SIGN).handleId_;
+
+}
+
+void GameScene::InitStageObjects(void)
+{
+
+	//スカイドーム
+	skyDome_ = std::make_unique<SkyDome>();
+	skyDome_->Init();
+
+	//ステージオブジェクト　ガレージ
+	garage_ = std::make_unique<Garage>();
+	garage_->Init();
+	garage_->SetPos(GARAGE_INIT_POS);
+	garage_->Update();
+
+	//ステージ
+	stage_ = std::make_unique<Stage>();
+	stage_->Init();
+
+}
+
+void GameScene::InitCarAndCamera(int index)
+{
+
+	cameras_.emplace_back(std::make_unique<Camera>());
+
+	cars_.emplace_back(std::make_unique<BalanceCar>(padNos_[index], *stage_));
+
+	//カメラ追従ターゲット指定
+	cameras_[index]->SetFollowTarget(&cars_[index]->GetTransform());
+
+	cameras_[index]->Init();
+
+	//車の初期位置とタイプを渡す
+	cars_[index]->Init(carTypes_[index], vecPos_[index]);
+
+}
+
+void GameScene::SetupCollision(void)
+{
+
+	for (auto& car : cars_)
+	{
+		car->AddCol(stage_->GetModelIdRoadCollision());
+		car->AddCol(stage_->GetModelIdGuardRailCollision());
+		car->AddCol(stage_->GetModelIdWallCollision());
+		car->AddCol(stage_->GetModelIdGoalCollision());
+	}
+
+}
+
+void GameScene::ProcessStepTime(void)
+{
+
 	//開始時間減速
 	stepStartTime_ -= SceneManager::GetInstance().GetDeltaTime();
 
 	//集中線描画の際に使用する時間
 	stepTime_ += SceneManager::GetInstance().GetDeltaTime();
+
+}
+
+void GameScene::ProcessCarUpdatesAndCollisions(void)
+{
 
 	//カウントダウン中は動けなくする
 	if (stepStartTime_ > 0)
@@ -170,156 +341,14 @@ void GameScene::Update(void)
 		{
 			ProcessGoalCollision(car1P);
 		}
-	}
-
-	for (auto& cameras : cameras_)
-	{
-		cameras->Update();
-	}
-
-	garage_->Update();
-
-	skyDome_->Update();
-
-	stage_->Update();
-
-}
-
-void GameScene::Draw(void)
-{
-
-	int playerNum = SceneManager::GetInstance().GetPlayerNum();
-
-	for (int i = 0; i < playerNum; i++)
-	{
-		SetDrawScreen(cameraScreens_[i]);
-
-		// 画面を初期化
-		ClearDrawScreen();
-		
-		cameras_[i]->SetBeforeDraw();
-
-		skyDome_->SetFollowTarget(&cars_[i]->GetTransform());
-		skyDome_->Update();
-		skyDome_->Draw();
-
-		DrawGame();
-
-		SetFontSize(256);
-
-		auto carNowSpeed = cars_[i]->GetSpeed();
-		auto carNowGear = cars_[i]->GetGearNum();
-
-		DrawUi(carNowSpeed, carNowGear, i);
-
-		DrawNeedle(carNowSpeed, carNowGear, i);
-
-		//スピードが一定以上なら集中線を出す
-		if (SPEED_OVER_START_LINE < carNowSpeed)
-		{
-			DrawLine();
-		}
 
 	}
 
-	SetDrawScreen(DX_SCREEN_BACK);
-
-	// 画面を初期化
-	ClearDrawScreen();
-
-	for (int i = 0; i < playerNum; i++)
-	{
-		DrawGraph(screenPos_[i].x, screenPos_[i].y, cameraScreens_[i], false);//透過処理は後で見直す
-	}
-
-}
-
-void GameScene::InitCarParam(void)
-{
-	//１Pと２Pのポジション
-	vecPos_ = { CAR_INIT_POS_1 ,CAR_INIT_POS_2 };
-
-	//１Pと２Pの車のタイプ
-	carTypes_ = { CAR_TYPE::BALANCE_CAR ,CAR_TYPE::BALANCE_CAR };
-
-	//１Pと２Pのパッド番号
-	padNos_ = { InputManager::JOYPAD_NO::PAD1, InputManager::JOYPAD_NO::PAD2 };
-}
-
-void GameScene::InitCameraParam(void)
-{
-	auto playerNum = SceneManager::GetInstance().GetPlayerNum();
-
-	int halfScreenWidth = Application::SCREEN_SIZE_X / 2;
-
-	for (int i = 0; i < playerNum; i++)
-	{
-		//スクリーンを２つ作成
-		cameraScreens_.emplace_back(MakeScreen(halfScreenWidth, Application::SCREEN_SIZE_Y, true));
-
-		//スクリーンのポジション
-		screenPos_.emplace_back(Vector2(halfScreenWidth * i, 0));
-	}
-}
-
-void GameScene::InitImageHandle(void)
-{
-	auto& resIns = ResourceManager::GetInstance();
-
-	imageInfos_[IMAGE_TYPE::TACHOMETER] = resIns.Load(ResourceManager::SRC::TACHOMETER).handleId_;
-	imageInfos_[IMAGE_TYPE::NEEDLE] = resIns.Load(ResourceManager::SRC::NEEDLE).handleId_;
-	imageInfos_[IMAGE_TYPE::MINIMAP] = resIns.Load(ResourceManager::SRC::MINIMAP).handleId_;
-	imageInfos_[IMAGE_TYPE::LINE_1] = resIns.Load(ResourceManager::SRC::LINE_1).handleId_;
-	imageInfos_[IMAGE_TYPE::LINE_2] = resIns.Load(ResourceManager::SRC::LINE_2).handleId_;
-	imageInfos_[IMAGE_TYPE::LINE_3] = resIns.Load(ResourceManager::SRC::LINE_3).handleId_;
-	imageInfos_[IMAGE_TYPE::START_SIGN] = resIns.Load(ResourceManager::SRC::START_SIGN).handleId_;
-}
-
-void GameScene::InitStageObjects(void)
-{
-	//スカイドーム
-	skyDome_ = std::make_unique<SkyDome>();
-	skyDome_->Init();
-
-	//ステージオブジェクト　ガレージ
-	garage_ = std::make_unique<Garage>();
-	garage_->Init();
-	garage_->SetPos(GARAGE_INIT_POS);
-	garage_->Update();
-
-	//ステージ
-	stage_ = std::make_unique<Stage>();
-	stage_->Init();
-}
-
-void GameScene::InitPlayerAndCamera(int index)
-{
-	cameras_.emplace_back(std::make_unique<Camera>());
-
-	cars_.emplace_back(std::make_unique<BalanceCar>(padNos_[index], *stage_));
-
-	//カメラ追従するオブジェクト指定
-	cameras_[index]->SetFollowTarget(&cars_[index]->GetTransform());
-
-	cameras_[index]->Init();
-
-	//車の初期位置とタイプを渡す
-	cars_[index]->Init(carTypes_[index], vecPos_[index]);
-}
-
-void GameScene::SetupCollision(void)
-{
-	for (auto& car : cars_)
-	{
-		car->AddCol(stage_->GetModelIdRoadCollision());
-		car->AddCol(stage_->GetModelIdGuardRailCollision());
-		car->AddCol(stage_->GetModelIdWallCollision());
-		car->AddCol(stage_->GetModelIdGoalCollision());
-	}
 }
 
 void GameScene::ProcessCarCollision(std::unique_ptr<Car>& car1P, std::unique_ptr<Car>& car2P)
 {
+
 	//１Pカプセルの上下
 	VECTOR car1PCapsuleTop = { car1P->GetPos().x, car1P->GetPos().y + CAR_OFFSET_Y ,car1P->GetPos().z + CAR_OFFSET_Z };
 	VECTOR car1PCapsuleBot = { car1P->GetPos().x, car1P->GetPos().y + CAR_OFFSET_Y ,car1P->GetPos().z - CAR_OFFSET_Z };
@@ -337,6 +366,7 @@ void GameScene::ProcessCarCollision(std::unique_ptr<Car>& car1P, std::unique_ptr
 		//コントローラー振動
 		ControllerVibration();
 	}
+
 	if (AsoUtility::IsHitCapsuleToSphere(car2PCapsuleBot, car2PCapsuleTop, Car::COLLISION_RADIUS, car1P->GetPosTop(), Car::COLLISION_RADIUS))
 	{
 		//衝突計算してセット
@@ -345,10 +375,12 @@ void GameScene::ProcessCarCollision(std::unique_ptr<Car>& car1P, std::unique_ptr
 		//コントローラー振動
 		ControllerVibration();
 	}
+
 }
 
 void GameScene::ProcessGoalCollision(std::unique_ptr<Car>& car)
 {
+
 	//シーン遷移
 	SceneManager::GetInstance().ChangeScene(SceneManager::SCENE_ID::RESULT, true);
 	SceneManager::GetInstance().SetPadNo(car->GetPadNo());
@@ -356,10 +388,28 @@ void GameScene::ProcessGoalCollision(std::unique_ptr<Car>& car)
 	//再生ストップ
 	SoundManager& soundIns = SoundManager::GetInstance();
 	soundIns.StopSound(Application::PATH_SOUND + "maou_bgm_neorock71b.mp3");
+
+}
+
+void GameScene::UpdateObject(void)
+{
+
+	for (auto& cameras : cameras_)
+	{
+		cameras->Update();
+	}
+
+	garage_->Update();
+
+	skyDome_->Update();
+
+	stage_->Update();
+
 }
 
 void GameScene::DrawGame(void)
 {
+	skyDome_->Draw();
 
 	garage_->Draw();
 
@@ -374,6 +424,7 @@ void GameScene::DrawGame(void)
 
 void GameScene::DrawUi(float nowSpeed, int nowGear, int nowCarNum)
 {
+	SetFontSize(256);
 
 	if (stepStartTime_ >= 1.0f)
 	{
@@ -387,16 +438,20 @@ void GameScene::DrawUi(float nowSpeed, int nowGear, int nowCarNum)
 
 	SetFontSize(64);
 
-	//今のギア速の表示
-	DrawFormatString(Application::SCREEN_SIZE_X / 2 - 100, Application::SCREEN_SIZE_Y - 300, 0xffffff, "%d速", nowGear);
+}
 
-	//スピード表示
-	DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, 0x000000, "%dkm", static_cast<int>(nowSpeed * 2));
+void GameScene::DrawTachometer(void)
+{
 
 	//タコメーター表示
 	DrawRotaGraph(Application::SCREEN_SIZE_X / 2 - 150.0f, Application::SCREEN_SIZE_Y - 100.0f, UI_SIZE, 0.0f, imageInfos_[IMAGE_TYPE::TACHOMETER], true);
 
-	//ミニマップ表示
+}
+
+void GameScene::DrawMiniMap(int nowCarNum)
+{
+
+	//ミニマップ描画
 	DrawRotaGraph(MINIMAP_UI_POS_X, MINIMAP_UI_POS_Y, 1.0f, AsoUtility::Deg2RadF(-30.0f), imageInfos_[IMAGE_TYPE::MINIMAP], true);
 
 	//ミニマップに表示する自機及び色設定
@@ -409,6 +464,7 @@ void GameScene::DrawUi(float nowSpeed, int nowGear, int nowCarNum)
 	auto size = cars_.size();
 	for (int carNum = 0; carNum < size; carNum++)
 	{
+
 		//位置
 		Vector2 pos;
 		pos.x = cars_[carNum]->GetPos().x / MINIMAP_MATCH_SIZE;
@@ -420,8 +476,35 @@ void GameScene::DrawUi(float nowSpeed, int nowGear, int nowCarNum)
 		{
 			color = 0xffffff;
 		}
+
 		DrawCircle(MINIMAP_UI_POS_X + pos.x, MINIMAP_UI_POS_Y + (-pos.y), CIRCLE_RADIUS, color, true);
+
 	}
+
+}
+
+void GameScene::DrawSpeed(float nowSpeed, int nowGear, int nowCarNum)
+{
+
+	//今のギア速の表示
+	DrawFormatString(Application::SCREEN_SIZE_X / 2 - 100, Application::SCREEN_SIZE_Y - 300, 0xffffff, "%d速", nowGear);
+
+	//スピード表示
+	DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, 0x000000, "%dkm", static_cast<int>(nowSpeed * 2));
+
+	// ギア変更タイミングを赤色で表示
+	auto DrawSpeedRed = [&](int gear, float maxSpeed) {
+		if (nowSpeed >= maxSpeed - GEAR_CHANGE_TIMING && nowSpeed <= maxSpeed)
+		{
+			DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, 0xff0000, "%dkm", static_cast<int>(nowSpeed * 2));
+		}
+		};
+
+	if (nowGear >= 1 && nowGear <= 4)
+	{
+		DrawSpeedRed(nowGear, cars_[nowCarNum]->GetMaxSpeedACC(nowGear - 1));
+	}
+
 }
 
 void GameScene::DrawNeedle(float nowSpeed, int nowGear, int nowCarNum)
@@ -447,19 +530,6 @@ void GameScene::DrawNeedle(float nowSpeed, int nowGear, int nowCarNum)
 	if (nowGear >= 1 && nowGear <= 5)
 	{
 		DrawNeedleForGear(nowGear);
-	}
-
-	// ギア変更タイミングを赤色で表示
-	auto DrawSpeedRed = [&](int gear, float maxSpeed) {
-		if (nowSpeed >= maxSpeed - GEAR_CHANGE_TIMING && nowSpeed <= maxSpeed)
-		{
-			DrawFormatString(SPEED_FORMAT_POS_X, SPEED_FORMAT_POS_Y, 0xff0000, "%dkm", static_cast<int>(nowSpeed * 2));
-		}
-		};
-
-	if (nowGear >= 1 && nowGear <= 4)
-	{
-		DrawSpeedRed(nowGear, cars_[nowCarNum]->GetMaxSpeedACC(nowGear - 1));
 	}
 
 }
@@ -490,6 +560,7 @@ void GameScene::DrawLine(void)
 	{
 		stepTime_ = 0.0f;
 	}
+
 }
 
 void GameScene::ControllerVibration(void)
@@ -497,17 +568,27 @@ void GameScene::ControllerVibration(void)
 	
 	//コントローラー振動
 	StartJoypadVibration(DX_INPUT_PAD1, VIBRATION_POWER, VIBRATION_TIME, EFFECTINDEX);
+
 	StartJoypadVibration(DX_INPUT_PAD2, VIBRATION_POWER, VIBRATION_TIME, EFFECTINDEX);
 
 }
 
 VECTOR GameScene::CalcCollisionCar(VECTOR pos1, VECTOR pos2)
 {
+
+	//差分を求める
 	auto differencePos1ToPos2 = VSub(pos1, pos2);
+
+	//高さは考えない
 	differencePos1ToPos2.y = 0.0f;
+
+	//正規化
 	differencePos1ToPos2 = VNorm(differencePos1ToPos2);
+
+	//正規化した値に衝突量を足し算
 	differencePos1ToPos2 = VScale(differencePos1ToPos2, COLLISION_POWER);
 
 	return differencePos1ToPos2;
+
 }
 

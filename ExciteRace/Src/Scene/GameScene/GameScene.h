@@ -44,10 +44,16 @@ private:
 	void InitStageObjects(void);
 
 	//車とカメラの初期化
-	void InitPlayerAndCamera(int index);
+	void InitCarAndCamera(int index);
 
 	//当たり判定用モデルハンドルを追加
 	void SetupCollision(void);
+
+	//時間更新
+	void ProcessStepTime(void);
+
+	//車の更新と当たり判定
+	void ProcessCarUpdatesAndCollisions(void);
 
 	//車同士の当たり判定
 	void ProcessCarCollision(std::unique_ptr<Car>& car1P, std::unique_ptr<Car>& car2P);
@@ -55,11 +61,23 @@ private:
 	//ゴールとの当たり判定
 	void ProcessGoalCollision(std::unique_ptr<Car>& car);
 
-	//ゲーム内で使う描画
+	//オブジェクト更新
+	void UpdateObject(void);
+
+	//ゲーム内で使うオブジェクト描画
 	void DrawGame(void);
 
 	//Ui描画
 	void DrawUi(float nowSpeed , int nowGear ,int nowCarNum);
+
+	//タコメーター描画
+	void DrawTachometer(void);
+
+	//ミニマップ描画
+	void DrawMiniMap(int nowCarNum);
+
+	//スピード表示
+	void DrawSpeed(float nowSpeed, int nowGear, int nowCarNum);
 
 	//ニードル描画(処理が多いので関数を別で作る)
 	void DrawNeedle(float nowSpeed, int nowGear , int nowCarNum);

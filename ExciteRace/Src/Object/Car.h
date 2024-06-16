@@ -16,6 +16,8 @@ class Stage;
 class Car
 {
 public:
+
+	//継承先やたクラスで使う定数宣言
 	//衝突関連
 	static constexpr float COLLISION_RADIUS = 120.0f;
 

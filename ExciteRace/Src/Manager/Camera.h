@@ -10,8 +10,6 @@ class Camera
 {
 public:
 
-
-
 	enum class MODE
 	{
 		NONE,

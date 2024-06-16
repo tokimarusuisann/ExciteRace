@@ -2,6 +2,29 @@
 #include "../../Utility/AsoUtility.h"
 #include "Transform.h"
 
+#pragma region ’è”éŒ¾
+
+//‘O•ûŒü
+constexpr VECTOR FORWARD_DIR = { 0.0f, 0.0f, 1.0f };
+
+//Œã‚ë•ûŒü
+constexpr VECTOR BACK_DIR = { 0.0f,0.0f,-1.0f };
+
+//‰E•ûŒü
+constexpr VECTOR RIGHT_DIR = { 1.0f,0.0f,0.0f };
+
+//¶•ûŒü
+constexpr VECTOR LEFT_DIR = { -1.0f,0.0f,0.0f };
+
+//ã•ûŒü
+constexpr VECTOR UP_DIR = { 0.0f,1.0f,0.0f };
+
+//‰º•ûŒü
+constexpr VECTOR DOWN_DIR = { 0.0f,-1.0f,0.0f };
+
+#pragma endregion
+
+
 Transform::Transform(void)
 {
 	modelId_ = -1;
@@ -72,32 +95,32 @@ void Transform::SetModel(int model)
 
 VECTOR Transform::GetForward(void) const
 {
-	return GetDir({ 0.0f, 0.0f, 1.0f });
+	return GetDir(FORWARD_DIR);
 }
 
 VECTOR Transform::GetBack(void) const
 {
-	return GetDir({ 0.0f, 0.0f, -1.0f });
+	return GetDir(BACK_DIR);
 }
 
 VECTOR Transform::GetRight(void) const
 {
-	return GetDir({ 1.0f, 0.0f, 0.0f });
+	return GetDir(RIGHT_DIR);
 }
 
 VECTOR Transform::GetLeft(void) const
 {
-	return GetDir({ -1.0f, 0.0f, 0.0f });
+	return GetDir(LEFT_DIR);
 }
 
 VECTOR Transform::GetUp(void) const
 {
-	return GetDir({ 0.0f, 1.0f, 0.0f });
+	return GetDir(UP_DIR);
 }
 
 VECTOR Transform::GetDown(void) const
 {
-	return GetDir({ 0.0f, -1.0f, 0.0f });
+	return GetDir(DOWN_DIR);
 }
 
 VECTOR Transform::GetDir(VECTOR vec) const

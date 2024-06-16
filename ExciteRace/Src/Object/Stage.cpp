@@ -4,6 +4,7 @@
 #include "Stage.h"
 
 #pragma region 定数宣言
+
 //このクラスでしか使わない
 //ステージデフォルトサイズ
 constexpr VECTOR STAGE_DEFAULT_SCALE = { 1.2f, 1.2f, 1.2f };
@@ -31,6 +32,10 @@ constexpr VECTOR WALL_COLLISION_SCALE = { 1.2f,6.0f,1.2f };
 
 //ゴールの初期方向
 constexpr VECTOR GOAL_INIT_ROT = { 0.0f,20.0f * DX_PI_F / 180, 0.0f };
+
+//ステージの初期方向
+constexpr VECTOR STAGE_INIT_ROT = { 0.0f,-30.0f * DX_PI_F / 180, 0.0f };
+
 #pragma endregion
 
 Stage::Stage(void)
@@ -109,7 +114,7 @@ void Stage::Init(void)
 
 	for (auto& stageInfos : stageInfos_)
 	{
-		stageInfos_[stageInfos.first].quaRotLocal_ = Quaternion::Euler(0.0f, AsoUtility::Deg2RadF(-30.0f), 0.0f);
+		stageInfos_[stageInfos.first].quaRotLocal_ = Quaternion::Euler(STAGE_INIT_ROT);
 		stageInfos_[stageInfos.first].Update();
 	}
 }

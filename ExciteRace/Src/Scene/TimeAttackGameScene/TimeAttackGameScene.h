@@ -19,31 +19,55 @@ public:
 
 	//初期化
 	void Init(void) override;
-
-	//画像ハンドル初期化
-	void InitImageHandle(void);
 	
 	//更新
 	void Update(void) override;
 	
 	//描画
 	void Draw(void) override;
-	
-
-
-	////UI AT描画
-	//void DrawUiAT(void);
-
-	////UI MT描画
-	//void DrawUiMT(void);
 
 private:
 
+	//画像ハンドル初期化
+	void InitImageHandle(void);
+
+	//選択した車の初期化
+	void InitSelectCar(void);
+
+	//カメラの初期化
+	void InitCamera(void);
+
+	//ステージオブジェクト初期化
+	void InitStageObjects(void);
+
+	//当たり判定用モデルハンドルを追加
+	void SetupCollision(void);
+
+	//オブジェクト更新
+	void UpdateObject(void);
+
+	//ゴールとの当たり判定
+	void ProcessGoalCollision(void);
+
+	//ゲーム内で使うオブジェクト描画
+	void DrawGame(void);
+
 	//UI描画
-	void DrawUi(void);
+	void DrawUi(float nowSpeed, int nowGear);
+
+	//タコメーター描画
+	void DrawTachometer(void);
+
+	//スピード描画
+	void DrawSpeedAndGear(float nowSpeed, int nowGear);
 
 	//ニードル描画（処理が多いので関数を別で作る）
-	void DrawUiNeedle(float nowSpeed);
+	void DrawNeedle(float nowSpeed, int nowGear);
+
+	void DrawMiniMap(void);
+
+	//スコア描画
+	void DrawScore(void);
 
 	//集中線描画
 	void DrawLine(void);

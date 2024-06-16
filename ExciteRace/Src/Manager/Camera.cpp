@@ -8,6 +8,9 @@
 
 #pragma region 定数宣言
 
+//カメラの上方向
+static constexpr VECTOR CAMERA_UP = { 0.0f,1.0f,0.0f };
+
 // カメラクリップ：NEAR
 static constexpr float CAMERA_NEAR = 40.0f;
 
@@ -84,7 +87,7 @@ void Camera::SetDefault(void)
 	// カメラの初期設定
 	pos_ = DEFAULT_CAMERA_POS;
 	targetPos_ = VAdd(pos_, RELATIVE_TARGET_POS);
-	cameraUp_ = { 0.0f, 1.0f, 0.0f };
+	cameraUp_ = CAMERA_UP;
 
 	// カメラはX軸に傾いているが、この傾いた状態を傾き無しとする
 	// quaRot_は回転計算用で、

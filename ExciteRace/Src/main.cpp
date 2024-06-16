@@ -1,6 +1,3 @@
-//------------------------------------------
-// éÅñº      ÅFéÅñº
-//------------------------------------------
 #include <DxLib.h>
 #include "_debug/_DebugConOut.h"
 #include "_debug/_DebugDispOut.h"
